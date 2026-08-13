@@ -214,7 +214,7 @@ def convert_law_zip_file(zip_path: str, output_dir: str) -> list[Path]:
     output_paths: list[Path] = []
     csv_map: dict[str, dict[str, Any]] = {}
     processed_laws: list[dict[str, Any]] = []
-
+    dir_counts: dict[str, int] = {}
     with zipfile.ZipFile(zpath, "r") as zf:
         # 1. First pass: read CSV metadata if available
         for name in zf.namelist():
@@ -227,7 +227,6 @@ def convert_law_zip_file(zip_path: str, output_dir: str) -> list[Path]:
                     pass
 
         # 2. Second pass: process XML files
-        seen_dirs: set[str] = set()
         for name in zf.namelist():
             if name.endswith(".xml"):
                 path_obj = Path(name)
@@ -244,15 +243,18 @@ def convert_law_zip_file(zip_path: str, output_dir: str) -> list[Path]:
                 )
                 output_paths.append(out_path)
 
-                # Rename if duplicate clean title encountered in zip
+                # Rename if duplicate clean title encountered in zip (Plan 1: _2, _3)
                 target_dir_name = out_path.name
-                if target_dir_name in seen_dirs:
-                    new_dir_name = f"{out_path.name}_{law_id}"
+                if target_dir_name in dir_counts:
+                    dir_counts[target_dir_name] += 1
+                    count = dir_counts[target_dir_name]
+                    new_dir_name = f"{out_path.name}_{count}"
                     new_path = Path(output_dir) / new_dir_name
                     if out_path.exists() and not new_path.exists():
                         out_path.rename(new_path)
                         out_path = new_path
-                seen_dirs.add(out_path.name)
+                else:
+                    dir_counts[target_dir_name] = 1
 
                 # Law summary for root index
                 law_type_map = {
