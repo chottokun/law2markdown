@@ -7,7 +7,12 @@ from pathlib import Path
 
 from law2markdown.models import AppdxContent
 from law2markdown.parser.xml_parser import parse_law_xml
-from law2markdown.renderer.frontmatter import render_article_frontmatter, render_index_frontmatter
+from law2markdown.renderer.frontmatter import (
+    render_appdx_frontmatter,
+    render_article_frontmatter,
+    render_index_frontmatter,
+    render_suppl_frontmatter,
+)
 from law2markdown.renderer.markdown import (
     render_appdx_styles_markdown,
     render_article_markdown,
@@ -70,14 +75,16 @@ def convert_law_xml_content(
         if main_suppl is not None:
             has_suppl_main = True
             s_file = suppl_path / "suppl_main.md"
+            fm = render_suppl_frontmatter(meta, "main", timestamp=iso_timestamp)
             body = render_suppl_markdown(meta, main_suppl)
-            s_file.write_text(f"{body}\n", encoding="utf-8")
+            s_file.write_text(f"{fm}\n\n{body}\n", encoding="utf-8")
 
         if amendment_suppls:
             has_suppl_amendments = True
             s_file = suppl_path / "suppl_amendments.md"
+            fm = render_suppl_frontmatter(meta, "amendments", timestamp=iso_timestamp)
             body = render_suppl_amendments_markdown(meta, amendment_suppls)
-            s_file.write_text(f"{body}\n", encoding="utf-8")
+            s_file.write_text(f"{fm}\n\n{body}\n", encoding="utf-8")
 
     # 3. Export Appendices
     # Tables remain independent 1-file, Styles/Figs/etc. are aggregated into appdx_styles.md
@@ -94,15 +101,19 @@ def convert_law_xml_content(
         appendix_path.mkdir(parents=True, exist_ok=True)
         for app in table_appendices:
             app_file = appendix_path / f"{app.appdx_id}.md"
-            app_file.write_text(f"# {app.title}\n\n{app.body}\n", encoding="utf-8")
+            fm = render_appdx_frontmatter(meta, app.title, app.appdx_type, timestamp=iso_timestamp)
+            app_file.write_text(f"{fm}\n\n# {app.title}\n\n{app.body}\n", encoding="utf-8")
 
     has_style_appendices = False
     if style_appendices:
         appendix_path.mkdir(parents=True, exist_ok=True)
         has_style_appendices = True
         app_file = appendix_path / "appdx_styles.md"
+        fm = render_appdx_frontmatter(
+            meta, "様式・その他付録一覧", "style", timestamp=iso_timestamp
+        )
         body = render_appdx_styles_markdown(meta, style_appendices)
-        app_file.write_text(f"{body}\n", encoding="utf-8")
+        app_file.write_text(f"{fm}\n\n{body}\n", encoding="utf-8")
 
     # 4. Export index.md
     index_file = base_path / "index.md"
