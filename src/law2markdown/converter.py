@@ -1,6 +1,7 @@
 """Main converter orchestrator for law2markdown."""
 
 import datetime
+import re
 import zipfile
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from law2markdown.renderer.frontmatter import render_article_frontmatter, render
 from law2markdown.renderer.markdown import (
     render_article_markdown,
     render_index_markdown,
+    render_suppl_amendments_markdown,
     render_suppl_markdown,
 )
 
@@ -18,14 +20,21 @@ def convert_law_xml_content(
     output_dir: str,
     law_id: str = "",
 ) -> Path:
-    """Convert XML string content to OKF/Markdown bundle."""
+    """Convert XML string content to human-readable Markdown bundle."""
     parsed = parse_law_xml(xml_content, law_id=law_id)
     meta = parsed.metadata
 
     target_law_id = law_id or meta.law_id or "unknown_law"
     meta.law_id = target_law_id
 
-    base_path = Path(output_dir) / target_law_id
+    # Human readable dir name: {LawTitle}_{law_id} or just {law_id} if no title
+    clean_law_title = re.sub(r"[^\w\u3000-\u30fe\u4e00-\u9fa5]", "", meta.title)
+    if len(clean_law_title) > 30:
+        clean_law_title = clean_law_title[:30] + "…"
+
+    dir_name = f"{clean_law_title}_{target_law_id}" if clean_law_title else target_law_id
+
+    base_path = Path(output_dir) / dir_name
     articles_path = base_path / "articles"
     suppl_path = base_path / "suppl"
     appendix_path = base_path / "appendix"
@@ -41,12 +50,31 @@ def convert_law_xml_content(
         body = render_article_markdown(meta, art)
         art_file.write_text(f"{fm}\n\n{body}\n", encoding="utf-8")
 
-    # 2. Export SupplProvisions
+    # 2. Export SupplProvisions (Aggregated into max 2 files: main & amendments)
+    has_suppl_main = False
+    has_suppl_amendments = False
+
     if parsed.suppl_provisions:
         suppl_path.mkdir(parents=True, exist_ok=True)
+        main_suppl = None
+        amendment_suppls = []
+
         for suppl in parsed.suppl_provisions:
-            s_file = suppl_path / f"{suppl.suppl_id}.md"
-            body = render_suppl_markdown(meta, suppl)
+            if not suppl.amend_law_num and main_suppl is None:
+                main_suppl = suppl
+            else:
+                amendment_suppls.append(suppl)
+
+        if main_suppl is not None:
+            has_suppl_main = True
+            s_file = suppl_path / "suppl_main.md"
+            body = render_suppl_markdown(meta, main_suppl)
+            s_file.write_text(f"{body}\n", encoding="utf-8")
+
+        if amendment_suppls:
+            has_suppl_amendments = True
+            s_file = suppl_path / "suppl_amendments.md"
+            body = render_suppl_amendments_markdown(meta, amendment_suppls)
             s_file.write_text(f"{body}\n", encoding="utf-8")
 
     # 3. Export Appendices
@@ -62,7 +90,8 @@ def convert_law_xml_content(
     index_body = render_index_markdown(
         meta=meta,
         articles=parsed.articles,
-        suppl_provisions=parsed.suppl_provisions,
+        has_suppl_main=has_suppl_main,
+        has_suppl_amendments=has_suppl_amendments,
         appendices=parsed.appendices,
     )
     index_file.write_text(f"{index_fm}\n\n{index_body}\n", encoding="utf-8")

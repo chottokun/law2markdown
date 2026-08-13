@@ -158,13 +158,16 @@ def parse_paragraph(para_elem: etree._Element) -> ParagraphContent:
     )
 
 
-def generate_article_id(num_str: str) -> str:
-    """Generate article ID from Num attribute (handles branch numbers like 2_2)."""
+def generate_article_id(num_str: str, art_title: str = "") -> str:
+    """Generate human-readable article ID (e.g. art_001_第一条, art_2_2_第二条の二)."""
+    clean_title = re.sub(r"[^\w\u3000-\u30fe\u4e00-\u9fa5]", "", art_title)
     if not num_str:
-        return "art_unknown"
-    if num_str.isdigit():
-        return f"art_{int(num_str):03d}"
-    return f"art_{num_str}"
+        return f"art_{clean_title}" if clean_title else "art_unknown"
+
+    num_prefix = f"{int(num_str):03d}" if num_str.isdigit() else num_str
+    if clean_title:
+        return f"art_{num_prefix}_{clean_title}"
+    return f"art_{num_prefix}"
 
 
 def parse_article(
@@ -177,9 +180,9 @@ def parse_article(
 ) -> ArticleContent:
     """Parse Article element."""
     num_str = art_elem.get("Num", "")
-    art_id = generate_article_id(num_str)
     art_title = clean_text_asis(art_elem.find("./ArticleTitle"))
     art_caption = clean_text_asis(art_elem.find("./ArticleCaption"))
+    art_id = generate_article_id(num_str, art_title)
 
     paragraphs = [parse_paragraph(p) for p in art_elem.findall("./Paragraph")]
 
@@ -292,15 +295,18 @@ def parse_law_xml(xml_content: str, law_id: str = "") -> ParsedLawData:
 
     for tag, appdx_type, title_xpath in appdx_tags:
         for idx, elem in enumerate(root.findall(f".//{tag}")):
-            title = clean_text_asis(elem.find(title_xpath))
-            appdx_id = f"{appdx_type}_{idx + 1:03d}"
-            # ASIS inner text / html extraction
+            raw_title = clean_text_asis(elem.find(title_xpath))
+            clean_t = re.sub(r"[^\w\u3000-\u30fe\u4e00-\u9fa5]", "", raw_title)
+            if clean_t:
+                appdx_id = f"{appdx_type}_{idx + 1:03d}_{clean_t}"
+            else:
+                appdx_id = f"{appdx_type}_{idx + 1:03d}"
             body_text = clean_text_asis(elem)
             appendices.append(
                 AppdxContent(
                     appdx_id=appdx_id,
                     appdx_type=appdx_type,
-                    title=title or appdx_id,
+                    title=raw_title or appdx_id,
                     body=body_text,
                 )
             )

@@ -94,13 +94,44 @@ def render_suppl_markdown(meta: LawMetadata, suppl: SupplProvisionContent) -> st
     return "\n".join(lines).strip()
 
 
+def render_suppl_amendments_markdown(
+    meta: LawMetadata, suppl_list: list[SupplProvisionContent]
+) -> str:
+    """Render all amendment SupplProvisions into a single structured Markdown."""
+    lines = [f"# {meta.title} 沿革・改正附則一覧\n"]
+    lines.append(f"**階層文脈**: [{meta.title}](../index.md) > 沿革・改正附則一覧\n")
+
+    for s in suppl_list:
+        header = f"## {s.label}"
+        if s.amend_law_num:
+            header += f" （{s.amend_law_num}）"
+        lines.append(header + "\n")
+
+        for art in s.articles:
+            lines.append(f"### {art.title}")
+            if art.caption:
+                lines.append(f"*{art.caption}*")
+            for p in art.paragraphs:
+                lines.append(render_paragraph(p))
+                lines.append("")
+
+        for p in s.paragraphs:
+            lines.append(render_paragraph(p))
+            lines.append("")
+
+        lines.append("---\n")
+
+    return "\n".join(lines).strip()
+
+
 def render_index_markdown(
     meta: LawMetadata,
     articles: list[ArticleContent],
-    suppl_provisions: list[SupplProvisionContent],
+    has_suppl_main: bool,
+    has_suppl_amendments: bool,
     appendices: list[AppdxContent],
 ) -> str:
-    """Render index.md body (Table of Contents)."""
+    """Render index.md body (Table of Contents with Article Captions)."""
     lines = [f"# {meta.title}\n", "## 目次（条文一覧）\n"]
 
     current_chapter = ""
@@ -109,16 +140,16 @@ def render_index_markdown(
             current_chapter = art.chapter
             lines.append(f"\n### {current_chapter}\n")
 
-        link_str = f"[{art.title}](./articles/{art.article_id}.md)"
-        caption_str = f" {art.caption}" if art.caption else ""
-        lines.append(f"* {link_str}{caption_str}")
+        link_text = f"{art.title}{art.caption}" if art.caption else art.title
+        link_str = f"[{link_text}](./articles/{art.article_id}.md)"
+        lines.append(f"* {link_str}")
 
-    if suppl_provisions:
-        lines.append("\n## 附則一覧\n")
-        for s in suppl_provisions:
-            link_str = f"[{s.label}](./suppl/{s.suppl_id}.md)"
-            extra = f" ({s.amend_law_num})" if s.amend_law_num else ""
-            lines.append(f"* {link_str}{extra}")
+    if has_suppl_main or has_suppl_amendments:
+        lines.append("\n## 附則\n")
+        if has_suppl_main:
+            lines.append("* [制定時附則](./suppl/suppl_main.md)")
+        if has_suppl_amendments:
+            lines.append("* [沿革・改正附則一覧](./suppl/suppl_amendments.md)")
 
     if appendices:
         lines.append("\n## 別表・様式一覧\n")

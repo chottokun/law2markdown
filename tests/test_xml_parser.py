@@ -69,7 +69,7 @@ def test_parse_simple_law(simple_law_xml):
 
     assert len(parsed.articles) == 2
     art1 = parsed.articles[0]
-    assert art1.article_id == "art_001"
+    assert art1.article_id == "art_001_第一条"
     assert art1.num == "1"
     assert art1.title == "第一条"
     assert art1.caption == "（労働条件の原則）"
