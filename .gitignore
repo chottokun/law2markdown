@@ -1,0 +1,76 @@
+# Project-specific secrets & local configs
+.env
+.env.*
+!.env.example
+
+# Hardware Calibration & Local Configs (Hardware & Location specific)
+camera_config.json
+!.camera_config.json.example
+!camera_config.json.example
+tapo_config.json
+tapo_config*.json
+
+# Databases & Vector Indexes
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+db.sqlite3*
+
+# AI Models & Large Weights
+*.onnx
+*.weights
+*.pt
+*.pth
+*.bin
+*.engine
+yolov8*.onnx
+*.xml
+*.log
+
+# Dynamic Runtime Directories (Directory structure kept via .gitkeep)
+logs/*
+!logs/.gitkeep
+scratch/*
+!scratch/.gitkeep
+memory/*
+!memory/.gitkeep
+wiki/*
+!wiki/.gitkeep
+/monitor/*.jpg
+/monitor/*.png
+
+# Python Runtime & Build Artifacts
+__pycache__/
+*.py[codz]
+*$py.class
+.venv/
+venv/
+env/
+build/
+dist/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Testing & Coverage
+.cache
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+nosetests.xml
+coverage.xml
+
+# IDE & OS Specific
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# local
+./data/*.zip
+./data/sample/
+./plan/
+output_sample/

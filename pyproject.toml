@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "law2markdown"
+version = "0.1.0"
+description = "e-Gov 法令 XML から LLM / RAG に最適化された Markdown へ決定論的に変換する CLI ツール"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "lxml>=5.1.0",
+]
+
+[project.scripts]
+law2md = "law2markdown.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.3.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
