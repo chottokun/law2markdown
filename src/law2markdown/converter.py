@@ -5,9 +5,11 @@ import re
 import zipfile
 from pathlib import Path
 
+from law2markdown.models import AppdxContent
 from law2markdown.parser.xml_parser import parse_law_xml
 from law2markdown.renderer.frontmatter import render_article_frontmatter, render_index_frontmatter
 from law2markdown.renderer.markdown import (
+    render_appdx_styles_markdown,
     render_article_markdown,
     render_index_markdown,
     render_suppl_amendments_markdown,
@@ -78,11 +80,29 @@ def convert_law_xml_content(
             s_file.write_text(f"{body}\n", encoding="utf-8")
 
     # 3. Export Appendices
-    if parsed.appendices:
+    # Tables remain independent 1-file, Styles/Figs/etc. are aggregated into appdx_styles.md
+    table_appendices: list[AppdxContent] = []
+    style_appendices: list[AppdxContent] = []
+
+    for app in parsed.appendices:
+        if app.appdx_type == "table":
+            table_appendices.append(app)
+        else:
+            style_appendices.append(app)
+
+    if table_appendices:
         appendix_path.mkdir(parents=True, exist_ok=True)
-        for app in parsed.appendices:
+        for app in table_appendices:
             app_file = appendix_path / f"{app.appdx_id}.md"
             app_file.write_text(f"# {app.title}\n\n{app.body}\n", encoding="utf-8")
+
+    has_style_appendices = False
+    if style_appendices:
+        appendix_path.mkdir(parents=True, exist_ok=True)
+        has_style_appendices = True
+        app_file = appendix_path / "appdx_styles.md"
+        body = render_appdx_styles_markdown(meta, style_appendices)
+        app_file.write_text(f"{body}\n", encoding="utf-8")
 
     # 4. Export index.md
     index_file = base_path / "index.md"
@@ -92,7 +112,8 @@ def convert_law_xml_content(
         articles=parsed.articles,
         has_suppl_main=has_suppl_main,
         has_suppl_amendments=has_suppl_amendments,
-        appendices=parsed.appendices,
+        table_appendices=table_appendices,
+        has_style_appendices=has_style_appendices,
     )
     index_file.write_text(f"{index_fm}\n\n{index_body}\n", encoding="utf-8")
 

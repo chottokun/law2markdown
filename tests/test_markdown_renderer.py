@@ -1,13 +1,8 @@
 """Tests for markdown and frontmatter renderers."""
 
-from law2markdown.models import (
-    ArticleContent,
-    ItemContent,
-    LawMetadata,
-    ParagraphContent,
-)
+from law2markdown.models import ArticleContent, ItemContent, LawMetadata, ParagraphContent
 from law2markdown.renderer.frontmatter import render_article_frontmatter
-from law2markdown.renderer.markdown import render_article_markdown
+from law2markdown.renderer.markdown import render_article_markdown, render_index_markdown
 
 
 def test_render_frontmatter():
@@ -68,3 +63,24 @@ def test_render_article_markdown():
     assert expected_body in md
     assert "**（２）** この法律で定める労働条件の基準は最低のものである。" in md
     assert "  * **一** 第一号要件" in md
+
+
+def test_render_index_markdown():
+    meta = LawMetadata(title="労働基準法")
+    art = ArticleContent(
+        article_id="art_001_第一条",
+        num="1",
+        title="第一条",
+        caption="（労働条件の原則）",
+        chapter="第一章　総則",
+    )
+    index_md = render_index_markdown(
+        meta=meta,
+        articles=[art],
+        has_suppl_main=True,
+        has_suppl_amendments=False,
+        table_appendices=[],
+        has_style_appendices=False,
+    )
+    assert "# 労働基準法" in index_md
+    assert "[第一条（労働条件の原則）](./articles/art_001_第一条.md)" in index_md

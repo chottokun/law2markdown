@@ -124,12 +124,26 @@ def render_suppl_amendments_markdown(
     return "\n".join(lines).strip()
 
 
+def render_appdx_styles_markdown(meta: LawMetadata, style_appendices: list[AppdxContent]) -> str:
+    """Render all style/fig/note appendices into a single aggregated Markdown."""
+    lines = [f"# {meta.title} 様式・その他付録一覧\n"]
+    lines.append(f"**階層文脈**: [{meta.title}](../index.md) > 様式・その他付録一覧\n")
+
+    for app in style_appendices:
+        lines.append(f"## {app.title}\n")
+        lines.append(app.body + "\n")
+        lines.append("---\n")
+
+    return "\n".join(lines).strip()
+
+
 def render_index_markdown(
     meta: LawMetadata,
     articles: list[ArticleContent],
     has_suppl_main: bool,
     has_suppl_amendments: bool,
-    appendices: list[AppdxContent],
+    table_appendices: list[AppdxContent],
+    has_style_appendices: bool,
 ) -> str:
     """Render index.md body (Table of Contents with Article Captions)."""
     lines = [f"# {meta.title}\n", "## 目次（条文一覧）\n"]
@@ -151,10 +165,14 @@ def render_index_markdown(
         if has_suppl_amendments:
             lines.append("* [沿革・改正附則一覧](./suppl/suppl_amendments.md)")
 
-    if appendices:
-        lines.append("\n## 別表・様式一覧\n")
-        for app in appendices:
+    if table_appendices:
+        lines.append("\n## 別表一覧\n")
+        for app in table_appendices:
             link_str = f"[{app.title}](./appendix/{app.appdx_id}.md)"
             lines.append(f"* {link_str}")
+
+    if has_style_appendices:
+        lines.append("\n## 様式・その他付録\n")
+        lines.append("* [様式・その他付録一覧](./appendix/appdx_styles.md)")
 
     return "\n".join(lines).strip()
