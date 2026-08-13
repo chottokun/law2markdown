@@ -22,14 +22,21 @@ sources:
 
 ## 2. 構造マッピング
 
+- **フォルダ命名**: 原則「法令タイトルのみ（最大20文字）」の極短構成。バージョン重複時は `_2`, `_3` の最小連番。
+- **ファイル名サニタイズ**: OS 禁止文字 (`:\/*?"<>|`) はすべてハイフン `-` に自動置換（例: `art_436-448...md`）。
 - **1条文 = 1ファイル**: `articles/art_001_第一条.md`
-- **目次**: `index.md` (各条文の件名 `第一条（目的）` を表示)
-- **附則**: `suppl/suppl_main.md`（制定時附則）、`suppl/suppl_amendments.md`（全沿革・改正附則一覧）
-- **別表**: `appendix/table_001_別表第一.md`（独立保持）
-- **様式・付録**: `appendix/appdx_styles.md`（集約結合）
+- **完全インデックスツリー**:
+  - ルート `index.md`: 全法令の最上位ポータル
+  - 法令トップ `index.md`: 各法令の総合目次
+  - サブインデックス `articles/index.md`, `suppl/index.md`, `appendix/index.md`: 各ディレクトリの 404 防止用インデックス
+- **附則の集約**: `suppl/suppl_main.md`（制定時附則）、`suppl/suppl_amendments.md`（全沿革・改正附則一覧）
+- **別表・様式の個別/集約分離**:
+  - `appendix/table_001_別表第一.md`（独立保持）
+  - `appendix/appdx_styles.md`（極小様式等の集約結合）
 
-## 3. ASIS 維持ルール
+## 3. ASIS 維持ルール & メタデータ補完
 
 - **ルビ**: `<Ruby>/<Rt>` の親文字のみを保持し、読みは非破壊除去。
 - **表**: 結合なしは GFM パイプテーブル、`rowspan`/`colspan` を含む表は HTML `<table>`。
 - **数式**: `<ArithFormula>` は LaTeX `$ ... $` 表記。
+- **CSV メタデータ統合**: `20.csv` 等から `title_kana`, `promulgate_date`, `enforce_date`, `amend_law_title`, `amend_law_num`, `is_unexecuted` を YAML Frontmatter に自動補完。
