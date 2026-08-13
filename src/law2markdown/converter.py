@@ -6,31 +6,33 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from law2markdown.models import AppdxContent
+from law2markdown.models import AppdxContent, LawMetadata
 from law2markdown.parser.csv_parser import parse_law_csv_content
 from law2markdown.parser.xml_parser import parse_law_xml
 from law2markdown.renderer.frontmatter import (
     render_appdx_frontmatter,
     render_article_frontmatter,
     render_index_frontmatter,
+    render_root_index_frontmatter,
     render_suppl_frontmatter,
 )
 from law2markdown.renderer.markdown import (
     render_appdx_styles_markdown,
     render_article_markdown,
     render_index_markdown,
+    render_root_index_markdown,
     render_suppl_amendments_markdown,
     render_suppl_markdown,
 )
 
 
-def convert_law_xml_content(
+def convert_law_xml_content_with_meta(
     xml_content: str,
     output_dir: str,
     law_id: str = "",
     extra_metadata: dict[str, Any] | None = None,
-) -> Path:
-    """Convert XML string content to human-readable Markdown bundle."""
+) -> tuple[Path, LawMetadata]:
+    """Convert XML content and return Path and LawMetadata."""
     parsed = parse_law_xml(xml_content, law_id=law_id)
     meta = parsed.metadata
 
@@ -145,7 +147,20 @@ def convert_law_xml_content(
     )
     index_file.write_text(f"{index_fm}\n\n{index_body}\n", encoding="utf-8")
 
-    return base_path
+    return base_path, meta
+
+
+def convert_law_xml_content(
+    xml_content: str,
+    output_dir: str,
+    law_id: str = "",
+    extra_metadata: dict[str, Any] | None = None,
+) -> Path:
+    """Convert XML string content to human-readable Markdown bundle."""
+    path, _ = convert_law_xml_content_with_meta(
+        xml_content, output_dir, law_id=law_id, extra_metadata=extra_metadata
+    )
+    return path
 
 
 def convert_law_xml_file(xml_path: str, output_dir: str, law_id: str = "") -> Path:
@@ -165,6 +180,7 @@ def convert_law_zip_file(zip_path: str, output_dir: str) -> list[Path]:
     zpath = Path(zip_path)
     output_paths: list[Path] = []
     csv_map: dict[str, dict[str, Any]] = {}
+    processed_laws: list[dict[str, Any]] = []
 
     with zipfile.ZipFile(zpath, "r") as zf:
         # 1. First pass: read CSV metadata if available
@@ -186,12 +202,42 @@ def convert_law_zip_file(zip_path: str, output_dir: str) -> list[Path]:
                 xml_content = xml_bytes.decode("utf-8", errors="replace")
 
                 extra_meta = csv_map.get(law_id, {})
-                out_path = convert_law_xml_content(
+                out_path, parsed_meta = convert_law_xml_content_with_meta(
                     xml_content,
                     output_dir,
                     law_id=law_id,
                     extra_metadata=extra_meta,
                 )
                 output_paths.append(out_path)
+
+                # Law summary for root index
+                law_type_map = {
+                    "Act": "法律",
+                    "CabinetOrder": "政令",
+                    "ImperialOrder": "勅令",
+                    "MinisterialOrdinance": "府省令",
+                    "Rule": "規則",
+                    "Constitution": "憲法",
+                }
+                law_type_name = extra_meta.get("law_type") or law_type_map.get(
+                    parsed_meta.law_type, "その他"
+                )
+                processed_laws.append(
+                    {
+                        "dir_name": out_path.name,
+                        "title": parsed_meta.title,
+                        "law_num": parsed_meta.law_num_text,
+                        "law_type_name": law_type_name,
+                        "is_unexecuted": parsed_meta.is_unexecuted,
+                    }
+                )
+
+    # 3. Export Root index.md
+    if processed_laws:
+        root_index_path = Path(output_dir) / "index.md"
+        iso_timestamp = datetime.datetime.now(datetime.UTC).isoformat()
+        r_fm = render_root_index_frontmatter(timestamp=iso_timestamp)
+        r_body = render_root_index_markdown(processed_laws)
+        root_index_path.write_text(f"{r_fm}\n\n{r_body}\n", encoding="utf-8")
 
     return output_paths

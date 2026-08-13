@@ -40,6 +40,12 @@ def test_convert_single_xml(tmp_path: Path):
     assert "# テスト法" in index_text
     assert "[第一条（目的）](./articles/art_001_第一条.md)" in index_text
 
+    # Verify root index.md
+    root_index_text = (out_dir / "index.md").read_text(encoding="utf-8")
+    assert "type: root_index" in root_index_text
+    assert "# e-Gov 法令ナレッジベース" in root_index_text
+    assert "[テスト法]" in root_index_text
+
     art_text = (law_out_dir / "articles" / "art_001_第一条.md").read_text(encoding="utf-8")
     assert "type: law_article" in art_text
     assert "テスト本文。" in art_text

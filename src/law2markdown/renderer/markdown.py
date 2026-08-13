@@ -176,3 +176,34 @@ def render_index_markdown(
         lines.append("* [様式・その他付録一覧](./appendix/appdx_styles.md)")
 
     return "\n".join(lines).strip()
+
+
+def render_root_index_markdown(
+    laws_list: list[dict[str, str]],
+    title: str = "e-Gov 法令ナレッジベース",
+) -> str:
+    """Render root index.md body linking to all processed laws."""
+    lines = [f"# {title}\n", f"## 収録法令一覧 ({len(laws_list)} 件)\n"]
+
+    grouped: dict[str, list[dict[str, str]]] = {}
+    for law in laws_list:
+        l_type = law.get("law_type_name", "その他")
+        grouped.setdefault(l_type, []).append(law)
+
+    type_order = ["法律", "政令", "勅令", "府省令", "省令", "規則", "その他"]
+    sorted_types = sorted(
+        grouped.keys(),
+        key=lambda t: type_order.index(t) if t in type_order else 99,
+    )
+
+    for l_type in sorted_types:
+        lines.append(f"### {l_type}\n")
+        for law in grouped[l_type]:
+            dir_name = law["dir_name"]
+            t_name = law["title"]
+            num_str = f" ({law['law_num']})" if law.get("law_num") else ""
+            unexec = " [未施行]" if law.get("is_unexecuted") else ""
+            lines.append(f"* [{t_name}](./{dir_name}/index.md){num_str}{unexec}")
+        lines.append("")
+
+    return "\n".join(lines).strip()

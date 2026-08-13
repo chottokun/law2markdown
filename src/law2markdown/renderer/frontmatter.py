@@ -153,3 +153,26 @@ def render_index_frontmatter(meta: LawMetadata, timestamp: str = "") -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def render_root_index_frontmatter(
+    title: str = "e-Gov 法令ナレッジベース", timestamp: str = ""
+) -> str:
+    """Render root index.md frontmatter compliant with OKF."""
+    lines = [
+        "---",
+        "type: root_index",
+        f'title: "{title}"',
+    ]
+    if timestamp:
+        lines.append(f'timestamp: "{timestamp}"')
+
+    lines.extend(
+        [
+            "tags:",
+            "  - law_root_index",
+            "  - e-gov",
+            "---",
+        ]
+    )
+    return "\n".join(lines)
