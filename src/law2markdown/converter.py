@@ -4,8 +4,10 @@ import datetime
 import re
 import zipfile
 from pathlib import Path
+from typing import Any
 
 from law2markdown.models import AppdxContent
+from law2markdown.parser.csv_parser import parse_law_csv_content
 from law2markdown.parser.xml_parser import parse_law_xml
 from law2markdown.renderer.frontmatter import (
     render_appdx_frontmatter,
@@ -26,10 +28,25 @@ def convert_law_xml_content(
     xml_content: str,
     output_dir: str,
     law_id: str = "",
+    extra_metadata: dict[str, Any] | None = None,
 ) -> Path:
     """Convert XML string content to human-readable Markdown bundle."""
     parsed = parse_law_xml(xml_content, law_id=law_id)
     meta = parsed.metadata
+
+    if extra_metadata:
+        if not meta.title_kana and extra_metadata.get("title_kana"):
+            meta.title_kana = extra_metadata["title_kana"]
+        if extra_metadata.get("promulgate_date"):
+            meta.promulgate_date = extra_metadata["promulgate_date"]
+        if extra_metadata.get("enforce_date"):
+            meta.enforce_date = extra_metadata["enforce_date"]
+        if extra_metadata.get("amend_law_title"):
+            meta.amend_law_title = extra_metadata["amend_law_title"]
+        if extra_metadata.get("amend_law_num"):
+            meta.amend_law_num = extra_metadata["amend_law_num"]
+        if extra_metadata.get("is_unexecuted") is not None:
+            meta.is_unexecuted = extra_metadata["is_unexecuted"]
 
     target_law_id = law_id or meta.law_id or "unknown_law"
     meta.law_id = target_law_id
@@ -144,18 +161,37 @@ def convert_law_xml_file(xml_path: str, output_dir: str, law_id: str = "") -> Pa
 
 
 def convert_law_zip_file(zip_path: str, output_dir: str) -> list[Path]:
-    """Convert all XML files inside a ZIP archive."""
+    """Convert all XML files inside a ZIP archive with CSV metadata enrichment."""
     zpath = Path(zip_path)
     output_paths: list[Path] = []
+    csv_map: dict[str, dict[str, Any]] = {}
 
     with zipfile.ZipFile(zpath, "r") as zf:
+        # 1. First pass: read CSV metadata if available
+        for name in zf.namelist():
+            if name.endswith(".csv"):
+                try:
+                    csv_bytes = zf.read(name)
+                    csv_text = csv_bytes.decode("utf-8-sig", errors="replace")
+                    csv_map.update(parse_law_csv_content(csv_text))
+                except Exception:
+                    pass
+
+        # 2. Second pass: process XML files
         for name in zf.namelist():
             if name.endswith(".xml"):
                 path_obj = Path(name)
                 law_id = path_obj.parent.name or path_obj.stem
                 xml_bytes = zf.read(name)
-                xml_content = xml_bytes.decode("utf-8")
-                out_path = convert_law_xml_content(xml_content, output_dir, law_id=law_id)
+                xml_content = xml_bytes.decode("utf-8", errors="replace")
+
+                extra_meta = csv_map.get(law_id, {})
+                out_path = convert_law_xml_content(
+                    xml_content,
+                    output_dir,
+                    law_id=law_id,
+                    extra_metadata=extra_meta,
+                )
                 output_paths.append(out_path)
 
     return output_paths

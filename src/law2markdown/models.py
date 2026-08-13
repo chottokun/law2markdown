@@ -16,7 +16,11 @@ class LawMetadata:
     title_kana: str = ""
     abbrev: str = ""
     law_id: str = ""
-    promulgate_date: str = ""
+    promulgate_date: str = ""  # 公布日
+    enforce_date: str = ""  # 施行日
+    amend_law_title: str = ""  # 改正法令名
+    amend_law_num: str = ""  # 改正法令番号
+    is_unexecuted: bool = False  # 未施行フラグ
 
 
 @dataclass

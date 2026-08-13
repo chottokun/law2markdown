@@ -18,10 +18,27 @@ def render_article_frontmatter(
         f'article_num: "{art.num}"',
         f'chapter: "{art.chapter}"',
         f'section: "{art.section}"',
-        "sources:",
-        f'  - law_id: "{meta.law_id}"',
-        f'    law_num: "{meta.law_num_text}"',
     ]
+    if meta.title_kana:
+        lines.append(f'title_kana: "{meta.title_kana}"')
+    if meta.promulgate_date:
+        lines.append(f'promulgate_date: "{meta.promulgate_date}"')
+    if meta.enforce_date:
+        lines.append(f'enforce_date: "{meta.enforce_date}"')
+    if meta.amend_law_title:
+        lines.append(f'amend_law_title: "{meta.amend_law_title}"')
+    if meta.amend_law_num:
+        lines.append(f'amend_law_num: "{meta.amend_law_num}"')
+    if meta.is_unexecuted:
+        lines.append("is_unexecuted: true")
+
+    lines.extend(
+        [
+            "sources:",
+            f'  - law_id: "{meta.law_id}"',
+            f'    law_num: "{meta.law_num_text}"',
+        ]
+    )
     if timestamp:
         lines.append(f'timestamp: "{timestamp}"')
 
@@ -104,9 +121,26 @@ def render_index_frontmatter(meta: LawMetadata, timestamp: str = "") -> str:
         f'title: "{meta.title}"',
         f'law_num: "{meta.law_num_text}"',
         f'law_id: "{meta.law_id}"',
-        "sources:",
-        f'  - law_id: "{meta.law_id}"',
     ]
+    if meta.title_kana:
+        lines.append(f'title_kana: "{meta.title_kana}"')
+    if meta.promulgate_date:
+        lines.append(f'promulgate_date: "{meta.promulgate_date}"')
+    if meta.enforce_date:
+        lines.append(f'enforce_date: "{meta.enforce_date}"')
+    if meta.amend_law_title:
+        lines.append(f'amend_law_title: "{meta.amend_law_title}"')
+    if meta.amend_law_num:
+        lines.append(f'amend_law_num: "{meta.amend_law_num}"')
+    if meta.is_unexecuted:
+        lines.append("is_unexecuted: true")
+
+    lines.extend(
+        [
+            "sources:",
+            f'  - law_id: "{meta.law_id}"',
+        ]
+    )
     if timestamp:
         lines.append(f'timestamp: "{timestamp}"')
 
