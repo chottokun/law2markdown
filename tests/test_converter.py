@@ -32,7 +32,7 @@ def test_convert_single_xml(tmp_path: Path):
     out_dir = tmp_path / "output"
     convert_law_xml_file(str(xml_file), str(out_dir), law_id="322AC0000000049")
 
-    law_out_dir = out_dir / "テスト法_322AC0000000049"
+    law_out_dir = out_dir / "テスト法"
     assert law_out_dir.exists()
     assert (law_out_dir / "index.md").exists()
     assert (law_out_dir / "articles" / "art_001_第一条.md").exists()

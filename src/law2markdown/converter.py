@@ -57,14 +57,17 @@ def convert_law_xml_content_with_meta(
     target_law_id = law_id or meta.law_id or "unknown_law"
     meta.law_id = target_law_id
 
-    # Human readable dir name: {LawTitle}_{law_id} or just {law_id} if no title
+    # Human readable dir name: Clean law title (Plan B)
     clean_law_title = re.sub(r"[^\w\u3000-\u30fe\u4e00-\u9fa5]", "", meta.title)
-    if len(clean_law_title) > 30:
-        clean_law_title = clean_law_title[:30] + "…"
+    if len(clean_law_title) > 20:
+        clean_law_title = clean_law_title[:20] + "…"
 
-    dir_name = f"{clean_law_title}_{target_law_id}" if clean_law_title else target_law_id
+    dir_name = clean_law_title or target_law_id
 
     base_path = Path(output_dir) / dir_name
+    # Handle duplicate directory names if any
+    if base_path.exists() and not (base_path / "index.md").exists():
+        base_path = Path(output_dir) / f"{clean_law_title}_{target_law_id}"
     articles_path = base_path / "articles"
     suppl_path = base_path / "suppl"
     appendix_path = base_path / "appendix"
@@ -224,6 +227,7 @@ def convert_law_zip_file(zip_path: str, output_dir: str) -> list[Path]:
                     pass
 
         # 2. Second pass: process XML files
+        seen_dirs: set[str] = set()
         for name in zf.namelist():
             if name.endswith(".xml"):
                 path_obj = Path(name)
@@ -239,6 +243,16 @@ def convert_law_zip_file(zip_path: str, output_dir: str) -> list[Path]:
                     extra_metadata=extra_meta,
                 )
                 output_paths.append(out_path)
+
+                # Rename if duplicate clean title encountered in zip
+                target_dir_name = out_path.name
+                if target_dir_name in seen_dirs:
+                    new_dir_name = f"{out_path.name}_{law_id}"
+                    new_path = Path(output_dir) / new_dir_name
+                    if out_path.exists() and not new_path.exists():
+                        out_path.rename(new_path)
+                        out_path = new_path
+                seen_dirs.add(out_path.name)
 
                 # Law summary for root index
                 law_type_map = {

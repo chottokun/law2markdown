@@ -31,4 +31,4 @@ def test_cli_convert_single_xml(tmp_path: Path):
         ret_code = main()
         assert ret_code == 0
 
-    assert (out_dir / "CLIテスト法_test" / "index.md").exists()
+    assert (out_dir / "CLIテスト法" / "index.md").exists()
