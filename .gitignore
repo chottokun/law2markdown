@@ -74,4 +74,5 @@ Thumbs.db
 ./data/sample/
 plan/
 output_sample/
-./*.zip
+*.zip
+output_sample.zip
