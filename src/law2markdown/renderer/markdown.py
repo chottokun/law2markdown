@@ -207,3 +207,57 @@ def render_root_index_markdown(
         lines.append("")
 
     return "\n".join(lines).strip()
+
+
+def render_articles_index_markdown(meta: LawMetadata, articles: list[ArticleContent]) -> str:
+    """Render articles/index.md body."""
+    lines = [
+        f"# {meta.title} 条文一覧\n",
+        f"**階層文脈**: [{meta.title}](../index.md) > 条文一覧\n",
+    ]
+    current_chapter = ""
+    for art in articles:
+        if art.chapter and art.chapter != current_chapter:
+            current_chapter = art.chapter
+            lines.append(f"\n### {current_chapter}\n")
+
+        link_text = f"{art.title}{art.caption}" if art.caption else art.title
+        lines.append(f"* [{link_text}](./{art.article_id}.md)")
+
+    return "\n".join(lines).strip()
+
+
+def render_suppl_index_markdown(meta: LawMetadata, has_main: bool, has_amendments: bool) -> str:
+    """Render suppl/index.md body."""
+    lines = [
+        f"# {meta.title} 附則一覧\n",
+        f"**階層文脈**: [{meta.title}](../index.md) > 附則一覧\n",
+    ]
+    if has_main:
+        lines.append("* [制定時附則](./suppl_main.md)")
+    if has_amendments:
+        lines.append("* [沿革・改正附則一覧](./suppl_amendments.md)")
+
+    return "\n".join(lines).strip()
+
+
+def render_appendix_index_markdown(
+    meta: LawMetadata,
+    table_appendices: list[AppdxContent],
+    has_style_appendices: bool,
+) -> str:
+    """Render appendix/index.md body."""
+    lines = [
+        f"# {meta.title} 別表・様式一覧\n",
+        f"**階層文脈**: [{meta.title}](../index.md) > 別表・様式一覧\n",
+    ]
+    if table_appendices:
+        lines.append("## 別表一覧\n")
+        for app in table_appendices:
+            lines.append(f"* [{app.title}](./{app.appdx_id}.md)")
+
+    if has_style_appendices:
+        lines.append("\n## 様式・その他付録\n")
+        lines.append("* [様式・その他付録一覧](./appdx_styles.md)")
+
+    return "\n".join(lines).strip()

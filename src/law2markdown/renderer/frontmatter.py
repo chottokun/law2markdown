@@ -176,3 +176,38 @@ def render_root_index_frontmatter(
         ]
     )
     return "\n".join(lines)
+
+
+def render_sub_index_frontmatter(
+    meta: LawMetadata,
+    sub_name: str,  # "articles" | "suppl" | "appendix"
+    timestamp: str = "",
+) -> str:
+    """Render sub-directory index.md frontmatter compliant with OKF."""
+    sub_titles = {
+        "articles": "条文一覧",
+        "suppl": "附則一覧",
+        "appendix": "別表・様式一覧",
+    }
+    sub_title = sub_titles.get(sub_name, sub_name)
+    lines = [
+        "---",
+        "type: law_sub_index",
+        f'title: "{meta.title} {sub_title}"',
+        f'law_num: "{meta.law_num_text}"',
+        f'law_id: "{meta.law_id}"',
+        "sources:",
+        f'  - law_id: "{meta.law_id}"',
+    ]
+    if timestamp:
+        lines.append(f'timestamp: "{timestamp}"')
+
+    lines.extend(
+        [
+            "tags:",
+            "  - law_sub_index",
+            f"  - {sub_name}",
+            "---",
+        ]
+    )
+    return "\n".join(lines)

@@ -14,14 +14,18 @@ from law2markdown.renderer.frontmatter import (
     render_article_frontmatter,
     render_index_frontmatter,
     render_root_index_frontmatter,
+    render_sub_index_frontmatter,
     render_suppl_frontmatter,
 )
 from law2markdown.renderer.markdown import (
     render_appdx_styles_markdown,
+    render_appendix_index_markdown,
     render_article_markdown,
+    render_articles_index_markdown,
     render_index_markdown,
     render_root_index_markdown,
     render_suppl_amendments_markdown,
+    render_suppl_index_markdown,
     render_suppl_markdown,
 )
 
@@ -76,6 +80,13 @@ def convert_law_xml_content_with_meta(
         body = render_article_markdown(meta, art)
         art_file.write_text(f"{fm}\n\n{body}\n", encoding="utf-8")
 
+    # Export articles/index.md
+    if parsed.articles:
+        art_index_file = articles_path / "index.md"
+        art_index_fm = render_sub_index_frontmatter(meta, "articles", timestamp=iso_timestamp)
+        art_index_body = render_articles_index_markdown(meta, parsed.articles)
+        art_index_file.write_text(f"{art_index_fm}\n\n{art_index_body}\n", encoding="utf-8")
+
     # 2. Export SupplProvisions (Aggregated into max 2 files: main & amendments)
     has_suppl_main = False
     has_suppl_amendments = False
@@ -105,6 +116,14 @@ def convert_law_xml_content_with_meta(
             body = render_suppl_amendments_markdown(meta, amendment_suppls)
             s_file.write_text(f"{fm}\n\n{body}\n", encoding="utf-8")
 
+        # Export suppl/index.md
+        s_index_file = suppl_path / "index.md"
+        s_index_fm = render_sub_index_frontmatter(meta, "suppl", timestamp=iso_timestamp)
+        s_index_body = render_suppl_index_markdown(
+            meta, has_main=has_suppl_main, has_amendments=has_suppl_amendments
+        )
+        s_index_file.write_text(f"{s_index_fm}\n\n{s_index_body}\n", encoding="utf-8")
+
     # 3. Export Appendices
     # Tables remain independent 1-file, Styles/Figs/etc. are aggregated into appdx_styles.md
     table_appendices: list[AppdxContent] = []
@@ -133,6 +152,17 @@ def convert_law_xml_content_with_meta(
         )
         body = render_appdx_styles_markdown(meta, style_appendices)
         app_file.write_text(f"{fm}\n\n{body}\n", encoding="utf-8")
+
+    # Export appendix/index.md
+    if table_appendices or has_style_appendices:
+        app_index_file = appendix_path / "index.md"
+        app_index_fm = render_sub_index_frontmatter(meta, "appendix", timestamp=iso_timestamp)
+        app_index_body = render_appendix_index_markdown(
+            meta,
+            table_appendices=table_appendices,
+            has_style_appendices=has_style_appendices,
+        )
+        app_index_file.write_text(f"{app_index_fm}\n\n{app_index_body}\n", encoding="utf-8")
 
     # 4. Export index.md
     index_file = base_path / "index.md"
