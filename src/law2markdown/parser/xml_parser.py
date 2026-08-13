@@ -158,16 +158,41 @@ def parse_paragraph(para_elem: etree._Element) -> ParagraphContent:
     )
 
 
-def generate_article_id(num_str: str, art_title: str = "") -> str:
-    """Generate human-readable article ID (e.g. art_001_第一条, art_2_2_第二条の二)."""
-    clean_title = re.sub(r"[^\w\u3000-\u30fe\u4e00-\u9fa5]", "", art_title)
-    if not num_str:
-        return f"art_{clean_title}" if clean_title else "art_unknown"
+def generate_appdx_id(appdx_type: str, num_str: str, title: str) -> str:
+    """Generate human-readable appendix ID (e.g. table_001_別表第一)."""
+    clean_title = re.sub(r"[^\w\u3000-\u30fe\u4e00-\u9fa5]", "", title)
+    if len(clean_title) > 20:
+        clean_title = clean_title[:20] + "…"
 
-    num_prefix = f"{int(num_str):03d}" if num_str.isdigit() else num_str
+    prefix = appdx_type.lower()
+    clean_num = re.sub(r'[:\\/*?"<>|]', "-", num_str)
+    if clean_num.isdigit():
+        num_formatted = f"{int(clean_num):03d}"
+    else:
+        num_formatted = clean_num or "001"
+
     if clean_title:
-        return f"art_{num_prefix}_{clean_title}"
-    return f"art_{num_prefix}"
+        return f"{prefix}_{num_formatted}_{clean_title}"
+    return f"{prefix}_{num_formatted}"
+
+
+def generate_article_id(num: str, art_title: str = "") -> str:
+    """Generate human-readable article ID (e.g. art_001_第一条, art_2_2_第二条の二)."""
+    num_clean = re.sub(r'[:\\/*?"<>|]', "-", num)
+    if num_clean.isdigit():
+        num_clean = f"{int(num_clean):03d}"
+
+    art_title_clean = re.sub(r"[^\w\u3000-\u30fe\u4e00-\u9fa5]", "", art_title)
+
+    if not art_title_clean:
+        return f"art_{num_clean}" if num_clean else "art_unknown"
+
+    if len(art_title_clean) > 20:
+        art_title_clean = art_title_clean[:20] + "…"
+
+    if num_clean:
+        return f"art_{num_clean}_{art_title_clean}"
+    return f"art_{art_title_clean}"
 
 
 def parse_article(
