@@ -1,5 +1,8 @@
 # LLM-Wiki 変更ログ
 
+## 2026-08-14
+- 法令 ZIP 内の CSV ファイル（`1.csv`, `2.csv` 等の連番・複数 CSV）自動探索およびメタデータ統合仕様の検証・ドキュメント（`docs/domain/law_converter.md`）同期完了。
+
 ## 2026-08-13
 - Wiki用 Markdown 出力詳細仕様書 (`Docs/domain/wiki_markdown_spec.md`) の作成・ナレッジベース登録。階層ツリー構造、OKF Frontmatter型規約、禁止文字サニタイズ、ASIS本文ルールを明文化。
 - 全ドキュメント類（`README.md`, `Docs/domain/law_converter.md`, `CHANGELOG.md` 等）の最新仕様への完全同期・更新完了。

@@ -39,4 +39,4 @@ sources:
 - **ルビ**: `<Ruby>/<Rt>` の親文字のみを保持し、読みは非破壊除去。
 - **表**: 結合なしは GFM パイプテーブル、`rowspan`/`colspan` を含む表は HTML `<table>`。
 - **数式**: `<ArithFormula>` は LaTeX `$ ... $` 表記。
-- **CSV メタデータ統合**: `20.csv` 等から `title_kana`, `promulgate_date`, `enforce_date`, `amend_law_title`, `amend_law_num`, `is_unexecuted` を YAML Frontmatter に自動補完。
+- **CSV メタデータ統合**: ZIP 内に含まれるすべての CSV（`1.csv`, `2.csv` ... や `20.csv` などの連番・複数 CSV）を自動探索・マージし、`title_kana`, `promulgate_date`, `enforce_date`, `amend_law_title`, `amend_law_num`, `is_unexecuted` を YAML Frontmatter に自動補完。
