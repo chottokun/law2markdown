@@ -12,8 +12,8 @@ e-Gov 法令 XML データを、LLM / RAG および Web ビューワー（Simple
   - 法令本文の文字・助詞を 1 文字も改変せず、原文通りのテキストを維持。
   - ルビ（`<Ruby>/<Rt>`）は親文字のみ非破壊抽出。
   - 複雑な結合表は HTML `<table>`、数式は LaTeX (`$ ... $`) で GitHub Markdown 準拠レンダリング。
-- **OKF v0.1 完全準拠 & メタデータ自動補完**
-  - 全てのファイル（条文・附則・付録・目次）に `type`, `title`, `sources` を含む YAML Frontmatter を完全付与。
+- **OKF v0.2 完全準拠 & メタデータ自動補完**
+  - 全てのファイル（条文・附則・付録・目次）に `type`, `title`, `description`, `resource`（公式 e-Gov パーマリンク `https://laws.e-gov.go.jp/document?lawid=...`）, `status`, `generated: {by, at}`, `sources: [{id, resource, title, ...}]`, `tags` を含む [OKF v0.2](https://raw.githubusercontent.com/GoogleCloudPlatform/knowledge-catalog/refs/heads/main/okf/SPEC.md) 仕様の YAML Frontmatter を完全付与。
   - 同封 CSV (`20.csv` 等) から `title_kana`, `promulgate_date`, `enforce_date`, `amend_law_title`, `amend_law_num`, `is_unexecuted` を自動抽出して Frontmatter に統合。
 - **高閲覧性・完全インデックス化ツリー**
   - **極短シンプルフォルダ名**: `output/労働基準法/`, 重複時も `_2`, `_3` の最小連番。
@@ -96,6 +96,18 @@ uv run ruff format --check
 # セキュリティ監査
 uv audit
 ```
+
+---
+
+## 📚 ドキュメント (LLM-Wiki / OKF)
+
+プロジェクトの設計方針、変換仕様、アーキテクチャの詳細は [`docs/`](./docs/README.md) 配下に OKF (Open Knowledge Format v0.2) 形式で整備されています。
+
+* [📑 ナレッジインデックス (`docs/README.md`)](./docs/README.md)
+  * [🏛️ Architecture (`docs/architecture/`)](./docs/architecture/README.md): 全体パイプライン設計・決定論的変換設計
+  * [📖 Domain (`docs/domain/`)](./docs/domain/README.md): 法令 XML 変換仕様・Wiki用 Markdown / Frontmatter 詳細仕様
+  * [⚙️ Infrastructure (`docs/infrastructure/`)](./docs/infrastructure/README.md): Python/uv 実行環境および CLI 仕様
+  * [📝 Change Log (`docs/log.md`)](./docs/log.md): ナレッジベースの更新履歴
 
 ---
 
