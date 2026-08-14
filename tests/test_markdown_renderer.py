@@ -24,7 +24,14 @@ def test_render_frontmatter():
     )
     fm = render_article_frontmatter(meta, art, timestamp="2026-08-13T00:00:00Z")
     assert "type: law_article" in fm
-    assert 'title: "労働基準法 第一条"' in fm
+    assert 'title: "労働基準法 第一条 （労働条件の原則）"' in fm
+    assert 'description: "労働基準法 第一章　総則 第一条 （労働条件の原則）"' in fm
+    assert 'resource: "https://laws.e-gov.go.jp/document?lawid=322AC0000000049"' in fm
+    assert 'status: "stable"' in fm
+    assert 'by: "process:law2markdown"' in fm
+    assert 'at: "2026-08-13T00:00:00Z"' in fm
+    assert 'sources:' in fm
+    assert '  - id: "egov-law"' in fm
     assert 'law_num: "昭和二十二年法律第四十九号"' in fm
     assert 'chapter: "第一章　総則"' in fm
 

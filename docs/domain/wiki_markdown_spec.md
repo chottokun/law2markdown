@@ -2,8 +2,10 @@
 type: Concept
 title: Wiki用 Markdown 出力詳細仕様書
 description: e-Gov 法令データを Wiki / RAG ビューワーに最適化された OKF 準拠 Markdown 群へ変換するための詳細構造・表記・サニタイズ規約
-status: active
-timestamp: 2026-08-13T00:00:00Z
+status: stable
+generated:
+  by: agent/gemini-3.7-flash
+  at: 2026-08-14T20:45:00+09:00
 tags:
   - domain
   - wiki
@@ -64,9 +66,9 @@ OS 非互換および Web ビューワーでのトラップを防ぐため、す
 
 ---
 
-## 3. OKF (Open Knowledge Format) YAML Frontmatter 仕様
+## 3. OKF (Open Knowledge Format) v0.2 YAML Frontmatter 仕様
 
-すべての出力ファイルは、先頭に `---` で囲まれた YAML Frontmatter を必須で保持する。
+すべての出力ファイルは、先頭に `---` で囲まれた YAML Frontmatter を保持する。OKF v0.2 仕様に準拠し、エージェントや検索システムが追跡可能（Provenance / Trust / Lifecycle）な構造とする。過剰なフィールド（実行監査、アクセス統計シグナル、賞味期限等）は付与せず、法令構造に最適な必要十分なフィールド群で構成する。
 
 ### 3.1 `type` フィールド区分一覧
 
@@ -79,12 +81,20 @@ OS 非互換および Web ビューワーでのトラップを防ぐため、す
 | `law_suppl` | 附則（制定時・沿革） | `/<LawTitle>/suppl/suppl_xxx.md` |
 | `law_appendix` | 別表・様式 | `/<LawTitle>/appendix/appdx_xxx.md` |
 
-### 3.2 YAML Frontmatter 記述例 (`law_article`)
+### 3.2 e-Gov 公式 `resource` URL 体系
+e-Gov の法令パーマリンク仕様に基づき、以下を出力する：
+* **URL 形式**: `https://laws.e-gov.go.jp/document?lawid={law_id}`
+* 理由: 改正版・施行期日付き法令ID（例: `347M50002000034_20270401_508M60000100090`）を含め、特定版の公式原本 Web ページへ確実にリンク・追跡可能。
+
+### 3.3 YAML Frontmatter 記述例 (`law_article`)
 
 ```yaml
 ---
 type: law_article
-title: "労働基準法 第一条"
+title: "労働基準法 第一条 （労働条件の原則）"
+description: "労働基準法 第一章　総則 第一条 （労働条件の原則）"
+resource: "https://laws.e-gov.go.jp/document?lawid=322AC0000000049_20260717_508AC0000000060"
+status: "stable"
 law_num: "昭和二十二年法律第四十九号"
 law_id: "322AC0000000049_20260717_508AC0000000060"
 article_num: "1"
@@ -93,10 +103,15 @@ section: ""
 title_kana: "ろうどうきじゅんほう"
 promulgate_date: "昭和二十二年四月七日"
 enforce_date: "令和八年七月十七日"
+generated:
+  by: "process:law2markdown"
+  at: "2026-08-14T12:00:00+00:00"
 sources:
-  - law_id: "322AC0000000049_20260717_508AC0000000060"
+  - id: "egov-law"
+    resource: "https://laws.e-gov.go.jp/document?lawid=322AC0000000049_20260717_508AC0000000060"
+    title: "労働基準法"
+    law_id: "322AC0000000049_20260717_508AC0000000060"
     law_num: "昭和二十二年法律第四十九号"
-timestamp: "2026-08-13T00:00:00Z"
 tags:
   - law
   - Act
@@ -118,4 +133,11 @@ tags:
 4. **数式 (Formula Rendering)**:
    - 算式記号・テキストは LaTeX 表記 (`$ ... $` または `$$ ... $$`) へ変換
 5. **ハイパーリンクのポータビリティ**:
-   - リンク表記は標準 GFM 相対パス形式 `[表示名](./relative_path.md)` を厳守。
+   - リンク表記は標準 GFM 相対パス形式（例: `\[表示名\](./relative_path.md)`）を厳守。
+
+---
+
+## 5. 関連概念
+
+* [法令 XML から OKF Markdown への変換仕様](./law_converter.md) - データ構造・ASIS維持ルール
+* [変換パイプライン アーキテクチャ](../architecture/pipeline.md) - 全体変換フロー

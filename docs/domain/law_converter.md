@@ -1,13 +1,16 @@
 ---
 type: Concept
 title: 法令 XML から OKF Markdown への変換仕様
-description: e-Gov 法令標準 XML スキーマ v3 を OKF 準拠の Markdown ナレッジファイル群へ非破壊的変換するアーキテクチャ・ルール
-status: active
-timestamp: 2026-08-13T00:00:00Z
+description: e-Gov 法令標準 XML スキーマ v3 を OKF 準拠の Markdown ナレッジファイル群へ非破壊的変換するルールと仕様
+status: stable
+generated:
+  by: agent/gemini-3.7-flash
+  at: 2026-08-14T20:45:00+09:00
 tags:
   - domain
   - law
   - okf
+  - xml
 sources:
   - id: plan_md
     resource: /plan/plan.md
@@ -40,3 +43,8 @@ sources:
 - **表**: 結合なしは GFM パイプテーブル、`rowspan`/`colspan` を含む表は HTML `<table>`。
 - **数式**: `<ArithFormula>` は LaTeX `$ ... $` 表記。
 - **CSV メタデータ統合**: ZIP 内に含まれるすべての CSV（`1.csv`, `2.csv` ... や `20.csv` などの連番・複数 CSV）を自動探索・マージし、`title_kana`, `promulgate_date`, `enforce_date`, `amend_law_title`, `amend_law_num`, `is_unexecuted` を YAML Frontmatter に自動補完。
+
+## 4. 関連概念
+
+* [Wiki用 Markdown 出力詳細仕様書](./wiki_markdown_spec.md) - 詳細構造・命名・サニタイズ・Frontmatter規定
+* [変換パイプライン アーキテクチャ](../architecture/pipeline.md) - 変換プロセスの全体フロー
