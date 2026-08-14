@@ -12,10 +12,10 @@
 
 ## 3. Mandatory Guidelines
 作業前に以下を必ず参照すること。
-* `docs/coding-style.md`: コーディングスタイル
-* `docs/testing.md`: テスト戦略・TDD
-* `docs/git.md`: Git 運用ルール
-* `docs/security.md`: セキュリティ要件
+* `rules/coding-style.md`: コーディングスタイル
+* `rules/testing.md`: テスト戦略・TDD
+* `rules/git.md`: Git 運用ルール
+* `rules/security.md`: セキュリティ要件
 
 ## 4. Reference Priority
 1. リポジトリ内コード -> 2. `docs/` -> 3. `README.md` -> 4. 公式ドキュメント
