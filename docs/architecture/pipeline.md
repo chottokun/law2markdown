@@ -45,7 +45,8 @@ flowchart TD
 | `law2markdown.renderer.frontmatter` | `LawMetadata` から OKF 準拠の YAML Frontmatter 文字列を生成 |
 | `law2markdown.renderer.markdown` | 本文（ASIS）・パイプ表/HTML表・LaTeX数式・パンくずナビゲーションを生成 |
 | `law2markdown.converter` | 全体オーケストレーション、出力ディレクトリ命名・衝突回避、最上位 `index.md` の一括生成 |
-| `law2markdown.cli` | `click` を利用したコマンドラインインターフェース（`law2md convert`, `law2md convert-zip`） |
+| `law2markdown.validator` | 出力ファイル群の相対リンク完全性検証（リンク切れ404の自動検出）および統計監査 |
+| `law2markdown.cli` | コマンドラインインターフェース（`law2md convert`, `law2md convert-zip`）および監査レポート表示 |
 
 ## 4. 関連概念
 

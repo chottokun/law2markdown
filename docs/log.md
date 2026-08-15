@@ -1,8 +1,10 @@
 # LLM-Wiki 変更ログ
 
 ## 2026-08-15
+* **Creation**: リンク完全性検証エンジン (`validator.py`) の新規実装。出力された全 Markdown ファイル内の相対リンク（`[...](./...)`）を網羅的に走査し、リンク切れ（404）や存在しないファイル参照を自動検出・検証。
+* **Creation**: CLI 変換完了時における「📊 変換・整合性監査レポート」自動出力機能の実装。総ファイル数、法令・条文・附則・別表/様式の内訳、検証リンク数、リンク完全性（PASS/FAIL）を即座にサマリー表示。
 * **Fix**: ZIP一括変換時に同名法令（施行日違い等）が存在する場合のディレクトリ重複解決をリファクタリング。事後リネームによる先行出力データの上書き・最上位 `index.md` からのリンク切れ（404）を解消するため、書き込み前に施行日・公布日・法令IDで決定論的ソートを行い、衝突しない出力先ディレクトリ（`_2`, `_3` 等）を事前決定して直接書き出すアーキテクチャへ移行。
-* **Update**: ドメイン仕様書 (`docs/domain/wiki_markdown_spec.md`) に重複解決の事前決定論的ソート仕様を追記。
+* **Update**: ドメイン仕様書 (`docs/domain/wiki_markdown_spec.md`) およびアーキテクチャ文書 (`docs/architecture/pipeline.md`) を最新実装に同期更新。
 
 ## 2026-08-14
 * **Update**: OKF (Open Knowledge Format v0.2) 仕様に完全準拠するよう YAML フロントマター生成部（`frontmatter.py`）を改訂。`type`, `title`, `description`, `resource`（公式 e-Gov パーマリンク `https://laws.e-gov.go.jp/document?lawid=...`）, `status`, `generated: {by: "process:law2markdown", at: ...}`, `sources: [{id, resource, title, ...}]`, `tags` を標準出力。過剰な監査・統計フィールドを排除した最適なスキーマを策定。
