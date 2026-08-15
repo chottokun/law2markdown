@@ -34,6 +34,7 @@ def convert_law_xml_content_with_meta(
     xml_content: str,
     output_dir: str,
     law_id: str = "",
+    target_dir_name: str = "",
     extra_metadata: dict[str, Any] | None = None,
 ) -> tuple[Path, LawMetadata]:
     """Convert XML content and return Path and LawMetadata."""
@@ -57,17 +58,17 @@ def convert_law_xml_content_with_meta(
     target_law_id = law_id or meta.law_id or "unknown_law"
     meta.law_id = target_law_id
 
-    # Human readable dir name: Clean law title (Plan B)
-    clean_law_title = re.sub(r"[^\w\u3000-\u30fe\u4e00-\u9fa5]", "", meta.title)
-    if len(clean_law_title) > 20:
-        clean_law_title = clean_law_title[:20] + "…"
-
-    dir_name = clean_law_title or target_law_id
+    # Determine directory name
+    if target_dir_name:
+        dir_name = target_dir_name
+    else:
+        # Human readable dir name: Clean law title (Plan B)
+        clean_law_title = re.sub(r"[^\w\u3000-\u30fe\u4e00-\u9fa5]", "", meta.title)
+        if len(clean_law_title) > 20:
+            clean_law_title = clean_law_title[:20] + "…"
+        dir_name = clean_law_title or target_law_id
 
     base_path = Path(output_dir) / dir_name
-    # Handle duplicate directory names if any
-    if base_path.exists() and not (base_path / "index.md").exists():
-        base_path = Path(output_dir) / f"{clean_law_title}_{target_law_id}"
     articles_path = base_path / "articles"
     suppl_path = base_path / "suppl"
     appendix_path = base_path / "appendix"
@@ -187,11 +188,16 @@ def convert_law_xml_content(
     xml_content: str,
     output_dir: str,
     law_id: str = "",
+    target_dir_name: str = "",
     extra_metadata: dict[str, Any] | None = None,
 ) -> Path:
     """Convert XML string content to human-readable Markdown bundle."""
     path, _ = convert_law_xml_content_with_meta(
-        xml_content, output_dir, law_id=law_id, extra_metadata=extra_metadata
+        xml_content,
+        output_dir,
+        law_id=law_id,
+        target_dir_name=target_dir_name,
+        extra_metadata=extra_metadata,
     )
     return path
 
@@ -214,7 +220,7 @@ def convert_law_zip_file(zip_path: str, output_dir: str) -> list[Path]:
     output_paths: list[Path] = []
     csv_map: dict[str, dict[str, Any]] = {}
     processed_laws: list[dict[str, Any]] = []
-    dir_counts: dict[str, int] = {}
+
     with zipfile.ZipFile(zpath, "r") as zf:
         # 1. First pass: read CSV metadata if available
         for name in zf.namelist():
@@ -226,7 +232,8 @@ def convert_law_zip_file(zip_path: str, output_dir: str) -> list[Path]:
                 except Exception:
                     pass
 
-        # 2. Second pass: process XML files
+        # 2. Second pass: discover XML entries and parse metadata for pre-resolution
+        xml_entries: list[dict[str, Any]] = []
         for name in zf.namelist():
             if name.endswith(".xml"):
                 path_obj = Path(name)
@@ -235,50 +242,91 @@ def convert_law_zip_file(zip_path: str, output_dir: str) -> list[Path]:
                 xml_content = xml_bytes.decode("utf-8", errors="replace")
 
                 extra_meta = csv_map.get(law_id, {})
-                out_path, parsed_meta = convert_law_xml_content_with_meta(
-                    xml_content,
-                    output_dir,
-                    law_id=law_id,
-                    extra_metadata=extra_meta,
-                )
-                output_paths.append(out_path)
+                # Lightweight parse for law title and metadata
+                parsed = parse_law_xml(xml_content, law_id=law_id)
+                meta = parsed.metadata
 
-                # Rename if duplicate clean title encountered in zip (Plan 1: _2, _3)
-                target_dir_name = out_path.name
-                if target_dir_name in dir_counts:
-                    dir_counts[target_dir_name] += 1
-                    count = dir_counts[target_dir_name]
-                    new_dir_name = f"{out_path.name}_{count}"
-                    new_path = Path(output_dir) / new_dir_name
-                    if out_path.exists() and not new_path.exists():
-                        out_path.rename(new_path)
-                        out_path = new_path
-                else:
-                    dir_counts[target_dir_name] = 1
+                clean_title = re.sub(r"[^\w\u3000-\u30fe\u4e00-\u9fa5]", "", meta.title)
+                if len(clean_title) > 20:
+                    clean_title = clean_title[:20] + "…"
+                base_dir_name = clean_title or law_id or "unknown_law"
 
-                # Law summary for root index
-                law_type_map = {
-                    "Act": "法律",
-                    "CabinetOrder": "政令",
-                    "ImperialOrder": "勅令",
-                    "MinisterialOrdinance": "府省令",
-                    "Rule": "規則",
-                    "Constitution": "憲法",
-                }
-                law_type_name = extra_meta.get("law_type") or law_type_map.get(
-                    parsed_meta.law_type, "その他"
+                enforce_date = str(extra_meta.get("enforce_date") or meta.enforce_date or "")
+                promulgate_date = str(
+                    extra_meta.get("promulgate_date") or meta.promulgate_date or ""
                 )
-                processed_laws.append(
+
+                xml_entries.append(
                     {
-                        "dir_name": out_path.name,
-                        "title": parsed_meta.title,
-                        "law_num": parsed_meta.law_num_text,
-                        "law_type_name": law_type_name,
-                        "is_unexecuted": parsed_meta.is_unexecuted,
+                        "name": name,
+                        "law_id": law_id,
+                        "xml_content": xml_content,
+                        "extra_meta": extra_meta,
+                        "base_dir_name": base_dir_name,
+                        "enforce_date": enforce_date,
+                        "promulgate_date": promulgate_date,
+                        "is_unexecuted": bool(extra_meta.get("is_unexecuted", False)),
                     }
                 )
 
-    # 3. Export Root index.md
+        # 3. Deterministic sorting:
+        # Sort duplicate base_dir_names by enforce_date, promulgate_date, law_id
+        grouped_by_dir: dict[str, list[dict[str, Any]]] = {}
+        for entry in xml_entries:
+            grouped_by_dir.setdefault(entry["base_dir_name"], []).append(entry)
+
+        for base_name, entries in grouped_by_dir.items():
+            # Sort entries deterministically: executed before unexecuted,
+            # older enforce_date first, then law_id
+            entries.sort(
+                key=lambda e: (
+                    e["is_unexecuted"],
+                    e["enforce_date"],
+                    e["promulgate_date"],
+                    e["law_id"],
+                )
+            )
+            for idx, entry in enumerate(entries):
+                if idx == 0:
+                    entry["target_dir_name"] = base_name
+                else:
+                    entry["target_dir_name"] = f"{base_name}_{idx + 1}"
+
+        # 4. Third pass: perform actual conversion directly to target_dir_name
+        # Keep original XML order or sorted order for output
+        law_type_map = {
+            "Act": "法律",
+            "CabinetOrder": "政令",
+            "ImperialOrder": "勅令",
+            "MinisterialOrdinance": "府省令",
+            "Rule": "規則",
+            "Constitution": "憲法",
+        }
+
+        for entry in xml_entries:
+            out_path, parsed_meta = convert_law_xml_content_with_meta(
+                entry["xml_content"],
+                output_dir,
+                law_id=entry["law_id"],
+                target_dir_name=entry["target_dir_name"],
+                extra_metadata=entry["extra_meta"],
+            )
+            output_paths.append(out_path)
+
+            law_type_name = entry["extra_meta"].get("law_type") or law_type_map.get(
+                parsed_meta.law_type, "その他"
+            )
+            processed_laws.append(
+                {
+                    "dir_name": out_path.name,
+                    "title": parsed_meta.title,
+                    "law_num": parsed_meta.law_num_text,
+                    "law_type_name": law_type_name,
+                    "is_unexecuted": parsed_meta.is_unexecuted,
+                }
+            )
+
+    # 5. Export Root index.md
     if processed_laws:
         root_index_path = Path(output_dir) / "index.md"
         iso_timestamp = datetime.datetime.now(datetime.UTC).isoformat()
