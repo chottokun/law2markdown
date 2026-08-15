@@ -30,7 +30,7 @@ def test_render_frontmatter():
     assert 'status: "stable"' in fm
     assert 'by: "process:law2markdown"' in fm
     assert 'at: "2026-08-13T00:00:00Z"' in fm
-    assert 'sources:' in fm
+    assert "sources:" in fm
     assert '  - id: "egov-law"' in fm
     assert 'law_num: "昭和二十二年法律第四十九号"' in fm
     assert 'chapter: "第一章　総則"' in fm
