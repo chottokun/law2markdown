@@ -238,6 +238,11 @@ size_categories:
 
 変換エンジン: [chottokun/law2markdown](https://github.com/chottokun/law2markdown)
 
+## 関連リンク
+- **GitHub リポジトリ**: [chottokun/law2markdown](https://github.com/chottokun/law2markdown)
+- **GitHub Releases 一括配布**: [Releases](https://github.com/chottokun/law2markdown/releases)
+- **データ提供元**: e-Gov法令検索 (デジタル庁)
+
 ## 特徴
 1. **完全な ASIS 原則（無加工・可逆性）**: 条文本文は1文字も改変・要約せず原文保持。
 2. **包含階層パス（Hierarchy Path）**: 編・章・節・款・目をスコープ通りに追跡。
@@ -248,6 +253,22 @@ size_categories:
 ## データセット内容
 - **収録法令数**: {law_count} 件
 - **総条文レコード数**: {article_count} 条
+- **更新頻度**: 毎週日曜日 GitHub Actions による自動差分更新
+
+## スキーマ構造 (Parquet)
+| カラム名 | 型 | 説明 |
+| :--- | :--- | :--- |
+| `law_id` | string | e-Gov 一意の法令ID (例: `129AC0000000089`) |
+| `law_num` | string | 法令番号 (例: `明治二十九年法律第八十九号`) |
+| `law_title` | string | 法令名 (例: `民法`) |
+| `article_num` | string | 条番号 (例: `1`) |
+| `hierarchy_path` | string | 完全包含階層パス (例: `民法 > 第一編　総則 > 第一条`) |
+| `title` | string | 条文タイトル |
+| `content` | string | 完全原本 Markdown 本文 (アンカー `<a id="...">` 埋込) |
+| `outbound_references` | list[string] | 当該条文が参照している他条文IDリスト |
+| `inbound_references` | list[string] | 当該条文を参照している他条文IDリスト |
+| `defined_terms` | list[string] | 当該条文で定義された法定用語リスト |
+| `child_anchors_json` | string | 項・号の文字オフセット (start_offset, end_offset) |
 
 ## 使い方 (How to Use)
 
