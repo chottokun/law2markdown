@@ -4,11 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       scope:
-        description: "法令スコープ (core: 主要基本法令, custom: カスタム)"
+        description: "法令スコープ (all: 全公開e-Gov法令, core: 主要基本法令)"
         required: true
-        default: "core"
+        default: "all"
         type: choice
         options:
+          - "all"
           - "core"
       upload_hf:
         description: "Hugging Face Datasets へ公開するか"
@@ -32,6 +33,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          df -h
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
