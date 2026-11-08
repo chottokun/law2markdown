@@ -52,6 +52,26 @@ class LawArticleRecord:
     child_anchors_json: str
 
 
+EGOV_BULK_ALL_XML_URL = "https://laws.e-gov.go.jp/bulkdownload?file_section=1&only_xml_flag=true"
+
+
+def download_all_laws_bulk_zip(output_zip_path: Path) -> Path:
+    """e-Gov から全法令の XML 一括 ZIP (all_xml.zip) をダウンロードする."""
+    req = urllib.request.Request(
+        EGOV_BULK_ALL_XML_URL,
+        headers={"User-Agent": "law2markdown-bulk-downloader/0.1.0"},
+    )
+    logger.info("Downloading all laws bulk zip from e-Gov...")
+    output_zip_path.parent.mkdir(parents=True, exist_ok=True)
+    with urllib.request.urlopen(req, timeout=300) as res:
+        if res.status != 200:
+            raise RuntimeError(f"Failed to download bulk zip: HTTP {res.status}")
+        with open(output_zip_path, "wb") as f:
+            while chunk := res.read(1024 * 1024):
+                f.write(chunk)
+    return output_zip_path
+
+
 def download_law_xml(law_id: str, output_path: Path) -> Path:
     """e-Gov 法令APIから法令XMLを取得して保存する."""
     url = f"https://elaws.e-gov.go.jp/api/1/lawdata/{law_id}"

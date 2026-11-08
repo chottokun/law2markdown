@@ -100,7 +100,7 @@ def main() -> int:
 
     ds_build = ds_sub.add_parser("build", help="主要法令の取得・変換・Parquet/アーカイブ構築")
     ds_build.add_argument(
-        "--scope", choices=["core", "custom"], default="core", help="法令取得スコープ"
+        "--scope", choices=["core", "all", "custom"], default="core", help="法令取得スコープ"
     )
     ds_build.add_argument("-o", "--output-dir", default="./output/legal_kb", help="KB出力先")
     ds_build.add_argument(
@@ -189,19 +189,32 @@ def main() -> int:
                 raw_xml_dir = Path("./tmp/raw_xml")
                 raw_xml_dir.mkdir(parents=True, exist_ok=True)
 
-                laws_to_process = list(CORE_LAWS.items())
-                if args.max_laws:
-                    laws_to_process = laws_to_process[: args.max_laws]
+                law_count = 0
+                if args.scope == "all":
+                    from law2markdown.dataset import download_all_laws_bulk_zip
 
-                print(f"📦 データセット構築開始: {len(laws_to_process)} 件の法令を対象")
-                for i, (law_id, law_name) in enumerate(laws_to_process, 1):
-                    print(
-                        f"[{i}/{len(laws_to_process)}] ダウンロード & 変換中: "
-                        f"{law_name} ({law_id})..."
-                    )
-                    xml_file = raw_xml_dir / f"{law_id}.xml"
-                    download_law_xml(law_id, xml_file)
-                    convert_law_xml_file(str(xml_file), str(kb_path), law_id=law_id)
+                    raw_zip = Path("./tmp/all_xml.zip")
+                    print("⬇️ e-Gov から全法令一括 ZIP (約270MB) をダウンロード中...")
+                    download_all_laws_bulk_zip(raw_zip)
+                    print("🔄 全法令 XML の一括変換処理を実行中...")
+                    converted_paths = convert_law_zip_file(str(raw_zip), str(kb_path))
+                    law_count = len(converted_paths)
+                    print(f"✅ 全法令変換完了: {law_count} 件の法令を出力しました")
+                else:
+                    laws_to_process = list(CORE_LAWS.items())
+                    if args.max_laws:
+                        laws_to_process = laws_to_process[: args.max_laws]
+
+                    print(f"📦 データセット構築開始: {len(laws_to_process)} 件の法令を対象")
+                    for i, (law_id, law_name) in enumerate(laws_to_process, 1):
+                        print(
+                            f"[{i}/{len(laws_to_process)}] ダウンロード & 変換中: "
+                            f"{law_name} ({law_id})..."
+                        )
+                        xml_file = raw_xml_dir / f"{law_id}.xml"
+                        download_law_xml(law_id, xml_file)
+                        convert_law_xml_file(str(xml_file), str(kb_path), law_id=law_id)
+                    law_count = len(laws_to_process)
 
                 print("📊 条文レコードの集約と Parquet 出力中...")
                 records = collect_article_records(kb_path)
@@ -219,7 +232,7 @@ def main() -> int:
                         return 1
                     print(f"🚀 Hugging Face ({args.repo_id}) へアップロード中...")
                     card_text = generate_dataset_card(
-                        law_count=len(laws_to_process),
+                        law_count=law_count,
                         article_count=len(records),
                     )
                     files_to_upload = {
