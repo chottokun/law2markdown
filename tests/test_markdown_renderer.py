@@ -69,7 +69,7 @@ def test_render_article_markdown():
     )
     assert expected_body in md
     assert "**（２）** この法律で定める労働条件の基準は最低のものである。" in md
-    assert "  * **一** 第一号要件" in md
+    assert '<a id="p2-i1"></a>**一** 第一号要件' in md
 
 
 def test_render_index_markdown():

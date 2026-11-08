@@ -72,6 +72,20 @@ def render_article_frontmatter(
     else:
         lines.append("inbound_references: []")
 
+    if art.defined_terms:
+        lines.append("defined_terms:")
+        for term in art.defined_terms:
+            lines.append(f'  - "{term}"')
+
+    if art.child_anchors:
+        lines.append("child_anchors:")
+        for anchor in art.child_anchors:
+            lines.append(f'  - id: "{anchor.id}"')
+            lines.append(f'    level: "{anchor.level}"')
+            lines.append(f'    label: "{anchor.label}"')
+            lines.append(f"    start_offset: {anchor.start_offset}")
+            lines.append(f"    end_offset: {anchor.end_offset}")
+
     if timestamp:
         lines.append("generated:")
         lines.append('  by: "process:law2markdown"')

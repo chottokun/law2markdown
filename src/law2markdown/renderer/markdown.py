@@ -1,8 +1,7 @@
-"""Markdown body renderer for Law articles, index, and suppl."""
-
 from law2markdown.models import (
     AppdxContent,
     ArticleContent,
+    ChildAnchor,
     ItemContent,
     LawMetadata,
     ParagraphContent,
@@ -11,39 +10,51 @@ from law2markdown.models import (
 from law2markdown.renderer.table import render_table
 
 
-def render_item(item: ItemContent, indent_level: int = 1) -> str:
-    """Render ItemContent recursively."""
+def render_item(
+    item: ItemContent, parent_anchor: str = "", item_idx: int = 1, indent_level: int = 1
+) -> str:
+    """Render ItemContent recursively with anchor."""
     indent = "  " * indent_level
     lines = []
 
+    level_prefix = "s" if indent_level > 1 else "i"
+    anchor_id = f"{parent_anchor}-{level_prefix}{item_idx}" if parent_anchor else f"i{item_idx}"
+    anchor_tag = f'<a id="{anchor_id}"></a>'
+
     body = " ".join(item.sentences)
-    lines.append(f"{indent}* **{item.title}** {body}".rstrip())
+    lines.append(f"{indent}* {anchor_tag}**{item.title}** {body}".rstrip())
 
     for tbl in item.tables:
         lines.append("\n" + render_table(tbl) + "\n")
 
-    for sub in item.subitems:
-        lines.append(render_item(sub, indent_level=indent_level + 1))
+    for s_idx, sub in enumerate(item.subitems, start=1):
+        lines.append(
+            render_item(sub, parent_anchor=anchor_id, item_idx=s_idx, indent_level=indent_level + 1)
+        )
 
     return "\n".join(lines)
 
 
-def render_paragraph(p: ParagraphContent) -> str:
-    """Render ParagraphContent."""
+def render_paragraph(p: ParagraphContent, p_idx: int = 1) -> str:
+    """Render ParagraphContent with anchor."""
     lines = []
     body = " ".join(p.sentences)
+    p_id = f"p{p_idx}"
+    anchor_tag = f'<a id="{p_id}"></a>'
 
     if p.num:
-        lines.append(f"**（{p.num}）** {body}".rstrip())
+        lines.append(f"{anchor_tag}**（{p.num}）** {body}".rstrip())
     else:
         if body:
-            lines.append(body)
+            lines.append(f"{anchor_tag}{body}".rstrip())
+        else:
+            lines.append(anchor_tag)
 
     for tbl in p.tables:
         lines.append("\n" + render_table(tbl) + "\n")
 
-    for item in p.items:
-        lines.append(render_item(item, indent_level=1))
+    for i_idx, item in enumerate(p.items, start=1):
+        lines.append(render_item(item, parent_anchor=p_id, item_idx=i_idx, indent_level=1))
 
     return "\n".join(lines)
 
@@ -54,7 +65,7 @@ def render_article_markdown(
     articles_map: dict[str, ArticleContent] | None = None,
     appendices_map: dict[str, AppdxContent] | None = None,
 ) -> str:
-    """Render ArticleContent to Markdown body."""
+    """Render ArticleContent to Markdown body and populate art.child_anchors."""
     lines = []
 
     if art.caption:
@@ -68,9 +79,47 @@ def render_article_markdown(
     hierarchy_str = " > ".join(path_parts) if path_parts else "本則"
     lines.append(f"**階層文脈**: [{meta.title}](../index.md) > {hierarchy_str}\n")
 
-    for p in art.paragraphs:
-        lines.append(render_paragraph(p))
+    for p_idx, p in enumerate(art.paragraphs, start=1):
+        lines.append(render_paragraph(p, p_idx=p_idx))
         lines.append("")
+
+    raw_body = "\n".join(lines).strip()
+
+    # Calculate child_anchors offsets
+    import re
+
+    anchor_pattern = re.compile(r'<a id="([^"]+)"></a>')
+    matches = list(anchor_pattern.finditer(raw_body))
+    child_anchors: list[ChildAnchor] = []
+
+    for i, m in enumerate(matches):
+        a_id = m.group(1)
+        start_offset = m.start()
+        end_offset = matches[i + 1].start() if i + 1 < len(matches) else len(raw_body)
+
+        # Determine level and label
+        if "-s" in a_id:
+            level = "subitem"
+            label = f"細分 {a_id}"
+        elif "-i" in a_id:
+            level = "item"
+            label = f"号 {a_id}"
+        else:
+            level = "paragraph"
+            p_num = a_id.replace("p", "")
+            label = f"第{p_num}項"
+
+        child_anchors.append(
+            ChildAnchor(
+                id=a_id,
+                level=level,
+                label=label,
+                start_offset=start_offset,
+                end_offset=end_offset,
+            )
+        )
+
+    art.child_anchors = child_anchors
 
     # Supplemental reference section (ASIS body strictly preserved above)
     has_refs = bool(art.outbound_references or art.inbound_references)

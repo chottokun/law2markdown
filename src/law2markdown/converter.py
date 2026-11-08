@@ -86,10 +86,10 @@ def convert_law_xml_content_with_meta(
     # 1. Export Articles
     for art in parsed.articles:
         art_file = articles_path / f"{art.article_id}.md"
-        fm = render_article_frontmatter(meta, art, timestamp=iso_timestamp)
         body = render_article_markdown(
             meta, art, articles_map=articles_map, appendices_map=appendices_map
         )
+        fm = render_article_frontmatter(meta, art, timestamp=iso_timestamp)
         art_file.write_text(f"{fm}\n\n{body}\n", encoding="utf-8")
 
     # Export articles/index.md
