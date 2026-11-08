@@ -160,7 +160,7 @@ def parse_paragraph(para_elem: etree._Element) -> ParagraphContent:
 
 def generate_appdx_id(appdx_type: str, num_str: str, title: str) -> str:
     """Generate human-readable appendix ID (e.g. table_001_別表第一)."""
-    clean_title = re.sub(r"[^\w\u3000-\u30fe\u4e00-\u9fa5]", "", title)
+    clean_title = re.sub(r"[^\w]", "", title)
     if len(clean_title) > 20:
         clean_title = clean_title[:20] + "…"
 
@@ -170,6 +170,8 @@ def generate_appdx_id(appdx_type: str, num_str: str, title: str) -> str:
         num_formatted = f"{int(clean_num):03d}"
     else:
         num_formatted = clean_num or "001"
+    if len(num_formatted) > 20:
+        num_formatted = num_formatted[:20]
 
     if clean_title:
         return f"{prefix}_{num_formatted}_{clean_title}"
@@ -181,8 +183,10 @@ def generate_article_id(num: str, art_title: str = "") -> str:
     num_clean = re.sub(r'[:\\/*?"<>|]', "-", num)
     if num_clean.isdigit():
         num_clean = f"{int(num_clean):03d}"
+    elif len(num_clean) > 20:
+        num_clean = num_clean[:20]
 
-    art_title_clean = re.sub(r"[^\w\u3000-\u30fe\u4e00-\u9fa5]", "", art_title)
+    art_title_clean = re.sub(r"[^\w]", "", art_title)
 
     if not art_title_clean:
         return f"art_{num_clean}" if num_clean else "art_unknown"
@@ -406,11 +410,8 @@ def parse_law_xml(xml_content: str, law_id: str = "") -> ParsedLawData:
     for tag, appdx_type, title_xpath in appdx_tags:
         for idx, elem in enumerate(root.findall(f".//{tag}")):
             raw_title = clean_text_asis(elem.find(title_xpath))
-            clean_t = re.sub(r"[^\w\u3000-\u30fe\u4e00-\u9fa5]", "", raw_title)
-            if clean_t:
-                appdx_id = f"{appdx_type}_{idx + 1:03d}_{clean_t}"
-            else:
-                appdx_id = f"{appdx_type}_{idx + 1:03d}"
+            num_str = elem.get("Num") or str(idx + 1)
+            appdx_id = generate_appdx_id(appdx_type, num_str, raw_title)
             body_text = clean_text_asis(elem)
             appendices.append(
                 AppdxContent(
