@@ -15,6 +15,11 @@ e-Gov 法令 XML データを、LLM / RAG および Web ビューワー（Simple
 - **OKF v0.2 完全準拠 & メタデータ自動補完**
   - 全てのファイル（条文・附則・付録・目次）に `type`, `title`, `description`, `resource`（公式 e-Gov パーマリンク `https://laws.e-gov.go.jp/document?lawid=...`）, `status`, `generated: {by, at}`, `sources: [{id, resource, title, ...}]`, `tags` を含む [OKF v0.2](https://raw.githubusercontent.com/GoogleCloudPlatform/knowledge-catalog/refs/heads/main/okf/SPEC.md) 仕様の YAML Frontmatter を完全付与。
   - 同封 CSV (`20.csv` 等) から `title_kana`, `promulgate_date`, `enforce_date`, `amend_law_title`, `amend_law_num`, `is_unexecuted` を自動抽出して Frontmatter に統合。
+- **Agentic Legal RAG（自律的法探索基盤）高度化機能**
+  - **完全階層パス (`hierarchy_path`)**: パンデクテン体系（編・章・節・款・目・条）をスコープ制御付きで追跡し、条文単体でベクトル化された場合も規律文脈を完全維持。
+  - **相互参照・委任グラフ (`outbound` / `inbound`)**: 条文内の相対参照（前条・次条）・明示参照（第〇条）・別表・政令委任を決定論的に抽出し、双方向グラフを Frontmatter および末尾セクションに自動構築。
+  - **法定用語定義レジストリ (`definitions.md`)**: 「〜とは、〜をいう」「以下〜という」等の定義規定から専門用語を自動索引化し、俗用意味と法的限定意味の混同を防止。
+  - **項・号行頭アンカー (`child_anchors`)**: 本文の文言を一切改変せず（原本維持）、項・号・細分号の行頭に `<a id="..."></a>` を配置し、Parent Document Retrieval における微小ブロックの検索・オフセット範囲を提供。
 - **高閲覧性・完全インデックス化ツリー**
   - **極短シンプルフォルダ名**: `output/労働基準法/`, 重複時も `_2`, `_3` の最小連番。
   - **最上位ポータル目次 (`output/index.md`)**: 法令種別（法律・政令・省令等）の自動分類・未施行タグ付き表示。
@@ -44,7 +49,7 @@ uv sync
 
 ## 💻 使い方 (CLI)
 
-`uv run law2md` コマンドを使用して変換を行います。
+`uv run law2md` コマンドを使用して変換および探索を行います。
 
 ### 1. 単一 XML ファイルの変換
 
@@ -58,6 +63,30 @@ uv run law2md convert path/to/law.xml -o ./output
 uv run law2md convert-zip data/20_xml.zip -o ./output
 ```
 
+### 3. 法探索クエリ (`query`)
+
+```bash
+# 条文または特定項の本文・メタデータ取得
+uv run law2md query get-article 労働基準法 1 -p 2 -d ./output
+
+# 上位階層および関連条文一覧の取得
+uv run law2md query get-hierarchy 労働基準法 1 -d ./output
+
+# 相互参照グラフ（参照先・被参照元）の走査
+uv run law2md query trace-references 労働基準法 1 -d ./output
+
+# 法定用語の厳密な定義照会
+uv run law2md query lookup-term 労働基準法 労働者 -d ./output
+```
+
+### 4. Agentic RAG 用 MCP サーバー起動 (`mcp`)
+
+Claude Desktop や自律的 AI エージェントから上記の法探索ツールを呼び出すための stdio サーバーを起動します。
+
+```bash
+uv run law2md mcp -d ./output
+```
+
 ---
 
 ## 📁 出力構造
@@ -66,7 +95,8 @@ uv run law2md convert-zip data/20_xml.zip -o ./output
 output/
 ├── index.md                      # [最上位ポータル目次] 全法令の自動分類一覧
 ├── 労働基準法/                   # [極短フォルダ名] (重複時のみ 労働基準法_2)
-│   ├── index.md                  # [法令トップ目次] 条文・附則・付録への案内
+│   ├── index.md                  # [法令トップ目次] 条文・附則・付録・用語定義への総合案内
+│   ├── definitions.md            # [用語定義レジストリ] 法令内の定義用語・定義条文一覧
 │   ├── articles/                 # 条文フォルダ (1条文 = 1ファイル)
 │   │   ├── index.md              # 条文サブインデックス
 │   │   ├── art_001_第一条.md
