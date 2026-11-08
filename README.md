@@ -1,6 +1,34 @@
 # law2markdown
 
+[![Hugging Face Datasets](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Datasets-yellow)](https://huggingface.co/datasets/Chottokun/japan-laws-md)
+[![GitHub Releases](https://img.shields.io/github/v/release/chottokun/law2markdown?label=Releases)](https://github.com/chottokun/law2markdown/releases)
+[![License: PDDL](https://img.shields.io/badge/License-PDDL-blue.svg)](https://opendatacommons.org/licenses/pddl/)
+[![CI](https://github.com/chottokun/law2markdown/actions/workflows/ci.yml/badge.svg)](https://github.com/chottokun/law2markdown/actions/workflows/ci.yml)
+
 e-Gov 法令 XML データを、LLM / RAG および Web ビューワー（SimpleWiki 等）に最適化された **Open Knowledge Format (OKF)** 準拠の Markdown ファイル群へ**決定論的にパース・変換する CLI ツール**。
+
+---
+
+## 📦 公開データセットを今すぐ利用する
+
+本ツールで変換された日本法令データセット（全公開法令および主要法令）は、**Hugging Face Datasets** および **GitHub Releases** にて完全無料・パブリックドメイン（著作権法第13条準拠）で公開・毎週定期更新されています。
+
+### 1. Python (`datasets`) で条文を 1 行読み込み
+```python
+from datasets import load_dataset
+
+# Hugging Face から直接ロード（Parquet形式で超高速・ストリーミング可能）
+dataset = load_dataset("Chottokun/japan-laws-md", split="train")
+
+# 条文の参照・階層パス・本文・定義語にアクセス
+article = dataset[0]
+print(article["title"])  # 例: 日本国憲法 第一条
+print(article["hierarchy_path"])  # 例: 日本国憲法 > 第一章　天皇 > 第一条
+print(article["content"])  # 原本そのままの条文Markdown
+```
+
+### 2. ローカルナレッジベース（Markdown Wiki）として一括ダウンロード
+* [GitHub Releases](https://github.com/chottokun/law2markdown/releases) または [Hugging Face Files](https://huggingface.co/datasets/Chottokun/japan-laws-md/tree/main) から `laws-markdown.tar.gz` をダウンロードして解凍するだけで、条文単位（1条文1ファイル＋相互リンク完備）のローカルWikiが即座に構築できます。
 
 ---
 
