@@ -197,6 +197,7 @@ def generate_article_id(num: str, art_title: str = "") -> str:
 
 def parse_article(
     art_elem: etree._Element,
+    law_title: str = "",
     part: str = "",
     chapter: str = "",
     section: str = "",
@@ -211,6 +212,18 @@ def parse_article(
 
     paragraphs = [parse_paragraph(p) for p in art_elem.findall("./Paragraph")]
 
+    # Build hierarchy_path
+    path_nodes: list[str] = []
+    if law_title:
+        path_nodes.append(law_title)
+    for p in (part, chapter, section, subsection, division):
+        if p:
+            path_nodes.append(p)
+    art_label = f"{art_title}{art_caption}" if art_caption else art_title
+    if art_label:
+        path_nodes.append(art_label)
+    hierarchy_path = " > ".join(path_nodes)
+
     return ArticleContent(
         article_id=art_id,
         num=num_str,
@@ -222,6 +235,7 @@ def parse_article(
         section=section,
         subsection=subsection,
         division=division,
+        hierarchy_path=hierarchy_path,
     )
 
 
@@ -250,41 +264,108 @@ def parse_law_xml(xml_content: str, law_id: str = "") -> ParsedLawData:
     main_provision = root.find(".//MainProvision")
 
     if main_provision is not None:
-        curr_part = ""
-        curr_chapter = ""
-        curr_section = ""
-        curr_sub = ""
-        curr_div = ""
 
-        def _traverse(elem: etree._Element):
-            nonlocal curr_part, curr_chapter, curr_section, curr_sub, curr_div
-            tag = elem.tag
+        def _traverse(
+            elem: etree._Element,
+            part: str = "",
+            chapter: str = "",
+            section: str = "",
+            subsection: str = "",
+            division: str = "",
+        ):
+            tag = elem.tag if isinstance(elem.tag, str) else ""
 
-            if tag == "PartTitle":
-                curr_part = clean_text_asis(elem)
-            elif tag == "ChapterTitle":
-                curr_chapter = clean_text_asis(elem)
-            elif tag == "SectionTitle":
-                curr_section = clean_text_asis(elem)
-            elif tag == "SubsectionTitle":
-                curr_sub = clean_text_asis(elem)
-            elif tag == "DivisionTitle":
-                curr_div = clean_text_asis(elem)
-            elif tag == "Article":
+            if tag == "Article":
                 articles.append(
                     parse_article(
                         elem,
-                        part=curr_part,
-                        chapter=curr_chapter,
-                        section=curr_section,
-                        subsection=curr_sub,
-                        division=curr_div,
+                        law_title=metadata.title,
+                        part=part,
+                        chapter=chapter,
+                        section=section,
+                        subsection=subsection,
+                        division=division,
                     )
                 )
-                return  # Don't recurse inside Article again
+                return
 
+            # If element is a structural container, update scope and reset lower levels
+            if tag == "Part":
+                part_title = clean_text_asis(elem.find("./PartTitle"))
+                for child in elem:
+                    if child.tag != "PartTitle":
+                        _traverse(
+                            child,
+                            part=part_title or part,
+                            chapter="",
+                            section="",
+                            subsection="",
+                            division="",
+                        )
+                return
+            elif tag == "Chapter":
+                chapter_title = clean_text_asis(elem.find("./ChapterTitle"))
+                for child in elem:
+                    if child.tag != "ChapterTitle":
+                        _traverse(
+                            child,
+                            part=part,
+                            chapter=chapter_title or chapter,
+                            section="",
+                            subsection="",
+                            division="",
+                        )
+                return
+            elif tag == "Section":
+                section_title = clean_text_asis(elem.find("./SectionTitle"))
+                for child in elem:
+                    if child.tag != "SectionTitle":
+                        _traverse(
+                            child,
+                            part=part,
+                            chapter=chapter,
+                            section=section_title or section,
+                            subsection="",
+                            division="",
+                        )
+                return
+            elif tag == "Subsection":
+                sub_title = clean_text_asis(elem.find("./SubsectionTitle"))
+                for child in elem:
+                    if child.tag != "SubsectionTitle":
+                        _traverse(
+                            child,
+                            part=part,
+                            chapter=chapter,
+                            section=section,
+                            subsection=sub_title or subsection,
+                            division="",
+                        )
+                return
+            elif tag == "Division":
+                div_title = clean_text_asis(elem.find("./DivisionTitle"))
+                for child in elem:
+                    if child.tag != "DivisionTitle":
+                        _traverse(
+                            child,
+                            part=part,
+                            chapter=chapter,
+                            section=section,
+                            subsection=subsection,
+                            division=div_title or division,
+                        )
+                return
+
+            # Generic container (MainProvision, etc.)
             for child in elem:
-                _traverse(child)
+                _traverse(
+                    child,
+                    part=part,
+                    chapter=chapter,
+                    section=section,
+                    subsection=subsection,
+                    division=division,
+                )
 
         _traverse(main_provision)
 

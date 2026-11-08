@@ -32,9 +32,19 @@ def render_article_frontmatter(
         f'law_num: "{meta.law_num_text}"',
         f'law_id: "{meta.law_id}"',
         f'article_num: "{art.num}"',
-        f'chapter: "{art.chapter}"',
-        f'section: "{art.section}"',
     ]
+    if art.hierarchy_path:
+        lines.append(f'hierarchy_path: "{art.hierarchy_path}"')
+    if art.part:
+        lines.append(f'part: "{art.part}"')
+    if art.chapter:
+        lines.append(f'chapter: "{art.chapter}"')
+    if art.section:
+        lines.append(f'section: "{art.section}"')
+    if art.subsection:
+        lines.append(f'subsection: "{art.subsection}"')
+    if art.division:
+        lines.append(f'division: "{art.division}"')
     if meta.title_kana:
         lines.append(f'title_kana: "{meta.title_kana}"')
     if meta.promulgate_date:
