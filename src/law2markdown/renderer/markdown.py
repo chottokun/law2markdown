@@ -1,3 +1,5 @@
+from typing import Any
+
 from law2markdown.models import (
     AppdxContent,
     ArticleContent,
@@ -64,6 +66,7 @@ def render_article_markdown(
     art: ArticleContent,
     articles_map: dict[str, ArticleContent] | None = None,
     appendices_map: dict[str, AppdxContent] | None = None,
+    definitions: list[Any] | None = None,
 ) -> str:
     """Render ArticleContent to Markdown body and populate art.child_anchors."""
     lines = []
@@ -160,6 +163,27 @@ def render_article_markdown(
                     lines.append(f"* [{ref_id}](./{ref_id}.md)")
             lines.append("")
 
+    # Supplemental definition section
+    if art.referenced_terms:
+        defn_map = {d.term: d for d in definitions} if definitions else {}
+        lines.append("\n---")
+        lines.append("## 定義用語\n")
+        for term in art.referenced_terms:
+            d = defn_map.get(term)
+            if d and d.article_id:
+                target_art = articles_map.get(d.article_id) if articles_map else None
+                if target_art and target_art.caption:
+                    art_label = f"{target_art.title}{target_art.caption}"
+                elif target_art:
+                    art_label = target_art.title
+                else:
+                    art_label = d.article_title or d.article_id
+                art_link = f"[{art_label}](./{d.article_id}.md)"
+                lines.append(f"* [{term}](../definitions.md#{term}) - 定義条文: {art_link}")
+            else:
+                lines.append(f"* [{term}](../definitions.md#{term})")
+        lines.append("")
+
     return "\n".join(lines).strip()
 
 
@@ -237,6 +261,7 @@ def render_index_markdown(
     has_suppl_amendments: bool,
     table_appendices: list[AppdxContent],
     has_style_appendices: bool,
+    has_definitions: bool = False,
 ) -> str:
     """Render index.md body (Table of Contents with Article Captions)."""
     lines = [f"# {meta.title}\n", "## 目次（条文一覧）\n"]
@@ -250,6 +275,10 @@ def render_index_markdown(
         link_text = f"{art.title}{art.caption}" if art.caption else art.title
         link_str = f"[{link_text}](./articles/{art.article_id}.md)"
         lines.append(f"* {link_str}")
+
+    if has_definitions:
+        lines.append("\n## 用語定義\n")
+        lines.append("* [用語定義レジストリ](./definitions.md)")
 
     if has_suppl_main or has_suppl_amendments:
         lines.append("\n## 附則\n")
@@ -352,5 +381,27 @@ def render_appendix_index_markdown(
     if has_style_appendices:
         lines.append("\n## 様式・その他付録\n")
         lines.append("* [様式・その他付録一覧](./appdx_styles.md)")
+
+    return "\n".join(lines).strip()
+
+
+def render_definitions_markdown(meta: LawMetadata, definitions: list[Any]) -> str:
+    """Render definitions.md body."""
+    lines = [
+        f"# {meta.title} 用語定義レジストリ\n",
+        f"**階層文脈**: [{meta.title}](./index.md) > 用語定義レジストリ\n",
+        f"本法令（{meta.law_num_text}）における定義規定から抽出された法定用語一覧です。\n",
+    ]
+
+    for d in sorted(definitions, key=lambda x: x.term):
+        anchor_tag = f'<a id="{d.term}"></a>'
+        lines.append(f"## {anchor_tag}{d.term}\n")
+        lines.append(f"- **定義文**: {d.definition_text}")
+        if d.article_id:
+            art_label = d.article_title or d.article_id
+            lines.append(f"- **定義条文**: [{art_label}](./articles/{d.article_id}.md)")
+        if d.scope:
+            lines.append(f"- **適用範囲**: {d.scope}")
+        lines.append("\n---\n")
 
     return "\n".join(lines).strip()

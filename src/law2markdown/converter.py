@@ -6,6 +6,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+from law2markdown.analyzer.definition import build_definition_registry
 from law2markdown.analyzer.reference import build_reference_graph
 from law2markdown.models import AppdxContent, LawMetadata
 from law2markdown.parser.csv_parser import parse_law_csv_content
@@ -13,6 +14,7 @@ from law2markdown.parser.xml_parser import parse_law_xml
 from law2markdown.renderer.frontmatter import (
     render_appdx_frontmatter,
     render_article_frontmatter,
+    render_definitions_frontmatter,
     render_index_frontmatter,
     render_root_index_frontmatter,
     render_sub_index_frontmatter,
@@ -23,6 +25,7 @@ from law2markdown.renderer.markdown import (
     render_appendix_index_markdown,
     render_article_markdown,
     render_articles_index_markdown,
+    render_definitions_markdown,
     render_index_markdown,
     render_root_index_markdown,
     render_suppl_amendments_markdown,
@@ -78,8 +81,9 @@ def convert_law_xml_content_with_meta(
 
     iso_timestamp = datetime.datetime.now(datetime.UTC).isoformat()
 
-    # Build reference graph
+    # Build reference graph and definition registry
     build_reference_graph(parsed.articles, parsed.appendices)
+    definitions = build_definition_registry(parsed.articles)
     articles_map = {a.article_id: a for a in parsed.articles}
     appendices_map = {app.appdx_id: app for app in parsed.appendices}
 
@@ -87,7 +91,11 @@ def convert_law_xml_content_with_meta(
     for art in parsed.articles:
         art_file = articles_path / f"{art.article_id}.md"
         body = render_article_markdown(
-            meta, art, articles_map=articles_map, appendices_map=appendices_map
+            meta,
+            art,
+            articles_map=articles_map,
+            appendices_map=appendices_map,
+            definitions=definitions,
         )
         fm = render_article_frontmatter(meta, art, timestamp=iso_timestamp)
         art_file.write_text(f"{fm}\n\n{body}\n", encoding="utf-8")
@@ -176,7 +184,15 @@ def convert_law_xml_content_with_meta(
         )
         app_index_file.write_text(f"{app_index_fm}\n\n{app_index_body}\n", encoding="utf-8")
 
-    # 4. Export index.md
+    # 4. Export definitions.md (if any defined terms found)
+    has_definitions = bool(definitions)
+    if has_definitions:
+        def_file = base_path / "definitions.md"
+        def_fm = render_definitions_frontmatter(meta, timestamp=iso_timestamp)
+        def_body = render_definitions_markdown(meta, definitions)
+        def_file.write_text(f"{def_fm}\n\n{def_body}\n", encoding="utf-8")
+
+    # 5. Export index.md
     index_file = base_path / "index.md"
     index_fm = render_index_frontmatter(meta, timestamp=iso_timestamp)
     index_body = render_index_markdown(
@@ -186,6 +202,7 @@ def convert_law_xml_content_with_meta(
         has_suppl_amendments=has_suppl_amendments,
         table_appendices=table_appendices,
         has_style_appendices=has_style_appendices,
+        has_definitions=has_definitions,
     )
     index_file.write_text(f"{index_fm}\n\n{index_body}\n", encoding="utf-8")
 

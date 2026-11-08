@@ -376,3 +376,53 @@ def render_sub_index_frontmatter(
         ]
     )
     return "\n".join(lines)
+
+
+def render_definitions_frontmatter(meta: LawMetadata, timestamp: str = "") -> str:
+    """Render definitions.md frontmatter compliant with OKF v0.2."""
+    resource_url = get_law_resource_url(meta.law_id)
+    status_val = "draft" if meta.is_unexecuted else "stable"
+
+    lines = [
+        "---",
+        "type: law_definitions",
+        f'title: "{meta.title} 用語定義レジストリ"',
+        f'description: "{meta.title}（{meta.law_num_text}）における法定用語定義および略称の一覧"',
+        f'resource: "{resource_url}"',
+        f'status: "{status_val}"',
+        f'law_num: "{meta.law_num_text}"',
+        f'law_id: "{meta.law_id}"',
+    ]
+    if meta.title_kana:
+        lines.append(f'title_kana: "{meta.title_kana}"')
+    if meta.promulgate_date:
+        lines.append(f'promulgate_date: "{meta.promulgate_date}"')
+    if meta.enforce_date:
+        lines.append(f'enforce_date: "{meta.enforce_date}"')
+    if meta.is_unexecuted:
+        lines.append("is_unexecuted: true")
+
+    if timestamp:
+        lines.append("generated:")
+        lines.append('  by: "process:law2markdown"')
+        lines.append(f'  at: "{timestamp}"')
+
+    lines.extend(
+        [
+            "sources:",
+            '  - id: "egov-law"',
+            f'    resource: "{resource_url}"',
+            f'    title: "{meta.title}"',
+            f'    law_id: "{meta.law_id}"',
+        ]
+    )
+
+    lines.extend(
+        [
+            "tags:",
+            "  - law_definitions",
+            f"  - {meta.law_type}",
+            "---",
+        ]
+    )
+    return "\n".join(lines)
