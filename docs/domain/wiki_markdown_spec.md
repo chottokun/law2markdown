@@ -15,6 +15,9 @@ sources:
   - id: plan_md
     resource: /plan/plan.md
     title: e-Gov法令XMLのOpen Knowledge Format（OKF）準拠Markdown変換計画
+  - id: eval_rag_doc
+    resource: /docs/raw/evaluating_law2markdown_for_rag.md
+    title: Evaluating Law2Markdown for RAG
 ---
 
 # Wiki用 Markdown 出力詳細仕様書
@@ -31,7 +34,8 @@ sources:
 <output_root>/
 ├── index.md                      # [最上位ルートポータル] 収録全法令の種別分類一覧
 └── <法令タイトル>/               # [法令フォルダ] (重複時のみ <法令タイトル>_2)
-    ├── index.md                  # [法令トップ目次] 条文・附則・付録への総合案内
+    ├── index.md                  # [法令トップ目次] 条文・附則・付録・用語定義への総合案内
+    ├── definitions.md            # [用語定義レジストリ] 法令内の定義用語・定義条文一覧
     ├── articles/                 # 条文フォルダ
     │   ├── index.md              # [サブインデックス] 条文件名付き一覧
     │   ├── art_001_第一条.md
@@ -63,12 +67,13 @@ OS 非互換および Web ビューワーでのトラップを防ぐため、す
 - **条文ファイル名**: `art_{Num3桁}_{条文タイトル名}.md`（例: `art_001_第一条.md`）
 - **別表ファイル名**: `table_{Num3桁}_{別表名}.md`（例: `table_001_別表第一.md`）
 - **様式集約ファイル**: `appdx_styles.md`
+- **用語定義レジストリ**: `definitions.md`
 
 ---
 
 ## 3. OKF (Open Knowledge Format) v0.2 YAML Frontmatter 仕様
 
-すべての出力ファイルは、先頭に `---` で囲まれた YAML Frontmatter を保持する。OKF v0.2 仕様に準拠し、エージェントや検索システムが追跡可能（Provenance / Trust / Lifecycle）な構造とする。過剰なフィールド（実行監査、アクセス統計シグナル、賞味期限等）は付与せず、法令構造に最適な必要十分なフィールド群で構成する。
+すべての出力ファイルは、先頭に `---` で囲まれた YAML Frontmatter を保持する。OKF v0.2 仕様に準拠し、エージェントや検索システムが追跡可能（Provenance / Trust / Lifecycle）な構造とする。
 
 ### 3.1 `type` フィールド区分一覧
 
@@ -80,13 +85,26 @@ OS 非互換および Web ビューワーでのトラップを防ぐため、す
 | `law_article` | 個別条文 | `/<LawTitle>/articles/art_xxx.md` |
 | `law_suppl` | 附則（制定時・沿革） | `/<LawTitle>/suppl/suppl_xxx.md` |
 | `law_appendix` | 別表・様式 | `/<LawTitle>/appendix/appdx_xxx.md` |
+| `law_definitions` | 法令用語定義レジストリ | `/<LawTitle>/definitions.md` |
 
 ### 3.2 e-Gov 公式 `resource` URL 体系
 e-Gov の法令パーマリンク仕様に基づき、以下を出力する：
 * **URL 形式**: `https://laws.e-gov.go.jp/document?lawid={law_id}`
 * 理由: 改正版・施行期日付き法令ID（例: `347M50002000034_20270401_508M60000100090`）を含め、特定版の公式原本 Web ページへ確実にリンク・追跡可能。
 
-### 3.3 YAML Frontmatter 記述例 (`law_article`)
+### 3.3 YAML Frontmatter 拡張属性（`law_article`）
+
+Agentic RAG に対応するため、条文の Frontmatter に以下の構造化メタデータを標準出力する。
+
+| 拡張メタデータ属性 | データ型 | 格納内容とRAGにおける機能 |
+|---|---|---|
+| `hierarchy_path` | 文字列 | 編・章・節・款・目・条の完全階層パス（文脈保持・スコープ制御） |
+| `outbound_references` | 文字列配列 | 当該条文が明示的・相対的に参照している条文・政令の識別子リスト |
+| `inbound_references` | 文字列配列 | 当該条文を参照している他の条文・準用規定の識別子リスト |
+| `defined_terms` | 文字列配列 | 当該条文によって法的定義が付与されている専門用語一覧 |
+| `child_anchors` | 構造体配列 | 内部に含まれる各項・各号のID、ラベル、および本文内文字オフセット範囲（`start_offset`, `end_offset`） |
+
+#### YAML Frontmatter 記述例 (`law_article`)
 
 ```yaml
 ---
@@ -98,14 +116,31 @@ status: "stable"
 law_num: "昭和二十二年法律第四十九号"
 law_id: "322AC0000000049_20260717_508AC0000000060"
 article_num: "1"
+hierarchy_path: "労働基準法 > 第一章　総則 > 第一条（労働条件の原則）"
 chapter: "第一章　総則"
 section: ""
 title_kana: "ろうどうきじゅんほう"
 promulgate_date: "昭和二十二年四月七日"
 enforce_date: "令和八年七月十七日"
+outbound_references: []
+inbound_references:
+  - "art_002_第二条"
+defined_terms:
+  - "労働条件"
+child_anchors:
+  - id: "p1"
+    level: "paragraph"
+    label: "第1項"
+    start_offset: 120
+    end_offset: 165
+  - id: "p2"
+    level: "paragraph"
+    label: "第2項"
+    start_offset: 167
+    end_offset: 240
 generated:
   by: "process:law2markdown"
-  at: "2026-08-14T12:00:00+00:00"
+  at: "2026-11-08T04:40:00+00:00"
 sources:
   - id: "egov-law"
     resource: "https://laws.e-gov.go.jp/document?lawid=322AC0000000049_20260717_508AC0000000060"
@@ -127,12 +162,19 @@ tags:
 2. **階層文脈 (Breadcrumb Header)**:
    - ファイル本文の先頭（見出し直下）に上位インデックスへのナビゲーションリンクを付与する。
    - 例: `**階層文脈**: [労働基準法](../index.md) > 第一章　総則`
-3. **表構造 (Table Rendering)**:
+3. **行頭セマンティックアンカー (`child_anchors`)**:
+   - 項の行頭に `<a id="p1"></a>`、号の行頭に `<a id="p1-i1"></a>`、細分号の行頭に `<a id="p1-i1-s1"></a>` を付与。
+   - 原文の助詞・文言は一切改変せず、Parent Document Retrieval における微小ブロックのピンポイント参照を可能にする。
+4. **表構造 (Table Rendering)**:
    - 結合セル（`rowspan`/`colspan`）なし → GFM パイプテーブル (`| ... |`)
    - 結合セルあり → HTML `<table>` / `<tr>` / `<td>` タグの構造を維持
-4. **数式 (Formula Rendering)**:
+5. **数式 (Formula Rendering)**:
    - 算式記号・テキストは LaTeX 表記 (`$ ... $` または `$$ ... $$`) へ変換
-5. **ハイパーリンクのポータビリティ**:
+6. **本文末尾の補足セクション (原本と明確に分離)**:
+   - 本文（ASIS）末尾に `---` 区切りで `## 参照・関連規定` および `## 定義用語` セクションを出力。
+   - 参照先条文への相対リンク（`[第二条（労働条件の決定）](./art_002_第二条.md)`）、被参照条文、使用定義語（`[労働条件](../definitions.md#労働条件)`）を掲載。
+   - 本文中の単語に直接リンクを埋め込まず、末尾に集約することで完全 ASIS とリンクナビゲーションを両立。
+7. **ハイパーリンクのポータビリティ**:
    - リンク表記は標準 GFM 相対パス形式（例: `\[表示名\](./relative_path.md)`）を厳守。
 
 ---
@@ -140,4 +182,4 @@ tags:
 ## 5. 関連概念
 
 * [法令 XML から OKF Markdown への変換仕様](./law_converter.md) - データ構造・ASIS維持ルール
-* [変換パイプライン アーキテクチャ](../architecture/pipeline.md) - 全体変換フロー
+* [変換パイプライン アーキテクチャ](../architecture/pipeline.md) - 全体変換フローおよび Agentic RAG コンポーネント構成

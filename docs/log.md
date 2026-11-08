@@ -1,5 +1,10 @@
 # LLM-Wiki 変更ログ
 
+## 2026-11-08
+* **Ingest**: Google Drive 上の評価レポート「Evaluating Law2Markdown for RAG」を `docs/raw/evaluating_law2markdown_for_rag.md` に保全・登録。
+* **Update**: ドメイン仕様書 (`docs/domain/wiki_markdown_spec.md`) を Agentic RAG（自律的法探索基盤）仕様に拡張。完全階層パス（`hierarchy_path`）、相互参照グラフ（`outbound_references` / `inbound_references`）、法令用語定義レジストリ（`definitions.md` / `defined_terms`）、および項号アンカー（`<a id="...">` / `child_anchors`）の仕様を定義。原本テキスト完全 ASIS 維持と末尾補足セクションの分離規約を確立。
+* **Update**: アーキテクチャ文書 (`docs/architecture/pipeline.md`) を改定。アナライザー層（`analyzer.hierarchy`, `reference`, `definition`）およびエージェント探索層（`query`, `mcp_server`）をパイプライン構成図に追加。
+
 ## 2026-08-15
 * **Creation**: リンク完全性検証エンジン (`validator.py`) の新規実装。出力された全 Markdown ファイル内の相対リンク（`[...](./...)`）を網羅的に走査し、リンク切れ（404）や存在しないファイル参照を自動検出・検証。
 * **Creation**: CLI 変換完了時における「📊 変換・整合性監査レポート」自動出力機能の実装。総ファイル数、法令・条文・附則・別表/様式の内訳、検証リンク数、リンク完全性（PASS/FAIL）を即座にサマリー表示。
