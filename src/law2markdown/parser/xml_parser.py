@@ -243,6 +243,10 @@ def parse_law_xml(xml_content: str, law_id: str = "") -> ParsedLawData:
     """Parse e-Gov Law XML content to ParsedLawData."""
     parser = etree.XMLParser(remove_blank_text=True)
     root = etree.fromstring(xml_content.encode("utf-8"), parser=parser)
+    if root.tag != "Law":
+        inner_law = root.find(".//Law")
+        if inner_law is not None:
+            root = inner_law
 
     law_num_elem = root.find(".//LawNum")
     law_title_elem = root.find(".//LawTitle")
