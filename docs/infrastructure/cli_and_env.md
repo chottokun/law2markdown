@@ -57,6 +57,32 @@ uv run law2md convert-zip <path/to/law.zip> -o <output_dir>
 - **オプション**:
   - `-o, --output-dir`: 出力先ルートディレクトリ（必須）
 
+### 3.3 法探索クエリ (`query`)
+
+変換済みナレッジベースから、特定条文・項スライス・上位階層・相互参照・定義語を直接照会します。
+
+```bash
+# 1. 条文または特定項の取得
+uv run law2md query get-article <法令名> <条番号> [-p <項番号>] [-d <kb_dir>]
+
+# 2. 上位階層および関連条文一覧の取得
+uv run law2md query get-hierarchy <法令名> <条番号> [-d <kb_dir>]
+
+# 3. 参照関係（参照先・被参照元）のグラフ走査
+uv run law2md query trace-references <法令名> <条番号> [--direction {outbound,inbound,both}] [-d <kb_dir>]
+
+# 4. 法定用語の厳密な定義照会
+uv run law2md query lookup-term <法令名> <専門用語> [-d <kb_dir>]
+```
+
+### 3.4 MCP サーバー起動 (`mcp`)
+
+Model Context Protocol (MCP) stdio JSON-RPC 2.0 サーバーを起動し、Claude Desktop や AI エージェントから4つの探索ツールを利用可能にします。
+
+```bash
+uv run law2md mcp -d <output_dir>
+```
+
 ## 4. 関連概念
 
 * [変換パイプライン アーキテクチャ](../architecture/pipeline.md) - 内部コンポーネント詳細

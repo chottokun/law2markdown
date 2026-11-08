@@ -1,5 +1,15 @@
 # LLM-Wiki 変更ログ
 
+## 2026-11-08
+* **Creation**: Model Context Protocol (MCP) stdio JSON-RPC 2.0 サーバー (`mcp_server.py`) の実装。AI エージェント向けに `get_article`, `get_hierarchy`, `trace_references`, `lookup_term` の4ツールを提供。
+* **Creation**: エージェント法探索クエリエンジン (`query.py`) および CLI サブコマンド (`law2md query`, `law2md mcp`) の実装。
+* **Creation**: 法令用語定義解析エンジン (`analyzer/definition.py`) および用語定義レジストリ (`definitions.md`) 自動生成機能の実装。法定定義規定から専門用語を自動索引化し、使用条文へのリンクおよび Frontmatter `defined_terms` を出力。
+* **Creation**: 項・号マルチレベルアンカー (`<a id="...">`) および文字オフセット計算エンジン (`child_anchors`) の実装。条文原本テキストの完全 ASIS（1文字も改変しない）を維持しながら、Parent Document Retrieval 向けのシャープな検索インデックスを実現。
+* **Creation**: 相互参照・委任関係解析エンジン (`analyzer/reference.py`) の実装。相対参照（前条・次条）・明示参照（第〇条）・別表・政令委任を決定論的に抽出し、双方向グラフ（`outbound_references` / `inbound_references`）および本文末尾の補足参照リンクセクションを構築。
+* **Fix**: XML パース時における階層スコープ制御の厳密化 (`xml_parser.py`)。編・章・節・款・目の階層遷移時に下位階層タイトルがリセットされるよう改善し、完全階層パス（`hierarchy_path`）を Frontmatter に標準出力。
+* **Ingest**: Google Drive 上の評価レポート「Evaluating Law2Markdown for RAG」を `docs/raw/evaluating_law2markdown_for_rag.md` に保全・登録。
+* **Update**: ドメイン仕様書 (`docs/domain/wiki_markdown_spec.md`)、アーキテクチャ文書 (`docs/architecture/pipeline.md`)、インフラ文書 (`docs/infrastructure/cli_and_env.md`)、および `README.md` を最新仕様に完全同期。
+
 ## 2026-08-15
 * **Creation**: リンク完全性検証エンジン (`validator.py`) の新規実装。出力された全 Markdown ファイル内の相対リンク（`[...](./...)`）を網羅的に走査し、リンク切れ（404）や存在しないファイル参照を自動検出・検証。
 * **Creation**: CLI 変換完了時における「📊 変換・整合性監査レポート」自動出力機能の実装。総ファイル数、法令・条文・附則・別表/様式の内訳、検証リンク数、リンク完全性（PASS/FAIL）を即座にサマリー表示。

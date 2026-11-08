@@ -69,6 +69,17 @@ class ParagraphContent:
 
 
 @dataclass
+class ChildAnchor:
+    """項・号の行頭アンカーおよび文字オフセット情報."""
+
+    id: str
+    level: str  # "paragraph" | "item" | "subitem"
+    label: str
+    start_offset: int = 0
+    end_offset: int = 0
+
+
+@dataclass
 class ArticleContent:
     """条文コンテンツ."""
 
@@ -82,6 +93,12 @@ class ArticleContent:
     section: str = ""
     subsection: str = ""
     division: str = ""
+    hierarchy_path: str = ""
+    outbound_references: list[str] = field(default_factory=list)
+    inbound_references: list[str] = field(default_factory=list)
+    defined_terms: list[str] = field(default_factory=list)
+    referenced_terms: list[str] = field(default_factory=list)
+    child_anchors: list[ChildAnchor] = field(default_factory=list)
 
 
 @dataclass

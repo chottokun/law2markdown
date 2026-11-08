@@ -32,9 +32,19 @@ def render_article_frontmatter(
         f'law_num: "{meta.law_num_text}"',
         f'law_id: "{meta.law_id}"',
         f'article_num: "{art.num}"',
-        f'chapter: "{art.chapter}"',
-        f'section: "{art.section}"',
     ]
+    if art.hierarchy_path:
+        lines.append(f'hierarchy_path: "{art.hierarchy_path}"')
+    if art.part:
+        lines.append(f'part: "{art.part}"')
+    if art.chapter:
+        lines.append(f'chapter: "{art.chapter}"')
+    if art.section:
+        lines.append(f'section: "{art.section}"')
+    if art.subsection:
+        lines.append(f'subsection: "{art.subsection}"')
+    if art.division:
+        lines.append(f'division: "{art.division}"')
     if meta.title_kana:
         lines.append(f'title_kana: "{meta.title_kana}"')
     if meta.promulgate_date:
@@ -47,6 +57,34 @@ def render_article_frontmatter(
         lines.append(f'amend_law_num: "{meta.amend_law_num}"')
     if meta.is_unexecuted:
         lines.append("is_unexecuted: true")
+
+    if art.outbound_references:
+        lines.append("outbound_references:")
+        for ref in art.outbound_references:
+            lines.append(f'  - "{ref}"')
+    else:
+        lines.append("outbound_references: []")
+
+    if art.inbound_references:
+        lines.append("inbound_references:")
+        for ref in art.inbound_references:
+            lines.append(f'  - "{ref}"')
+    else:
+        lines.append("inbound_references: []")
+
+    if art.defined_terms:
+        lines.append("defined_terms:")
+        for term in art.defined_terms:
+            lines.append(f'  - "{term}"')
+
+    if art.child_anchors:
+        lines.append("child_anchors:")
+        for anchor in art.child_anchors:
+            lines.append(f'  - id: "{anchor.id}"')
+            lines.append(f'    level: "{anchor.level}"')
+            lines.append(f'    label: "{anchor.label}"')
+            lines.append(f"    start_offset: {anchor.start_offset}")
+            lines.append(f"    end_offset: {anchor.end_offset}")
 
     if timestamp:
         lines.append("generated:")
@@ -334,6 +372,56 @@ def render_sub_index_frontmatter(
             "tags:",
             "  - law_sub_index",
             f"  - {sub_name}",
+            "---",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def render_definitions_frontmatter(meta: LawMetadata, timestamp: str = "") -> str:
+    """Render definitions.md frontmatter compliant with OKF v0.2."""
+    resource_url = get_law_resource_url(meta.law_id)
+    status_val = "draft" if meta.is_unexecuted else "stable"
+
+    lines = [
+        "---",
+        "type: law_definitions",
+        f'title: "{meta.title} 用語定義レジストリ"',
+        f'description: "{meta.title}（{meta.law_num_text}）における法定用語定義および略称の一覧"',
+        f'resource: "{resource_url}"',
+        f'status: "{status_val}"',
+        f'law_num: "{meta.law_num_text}"',
+        f'law_id: "{meta.law_id}"',
+    ]
+    if meta.title_kana:
+        lines.append(f'title_kana: "{meta.title_kana}"')
+    if meta.promulgate_date:
+        lines.append(f'promulgate_date: "{meta.promulgate_date}"')
+    if meta.enforce_date:
+        lines.append(f'enforce_date: "{meta.enforce_date}"')
+    if meta.is_unexecuted:
+        lines.append("is_unexecuted: true")
+
+    if timestamp:
+        lines.append("generated:")
+        lines.append('  by: "process:law2markdown"')
+        lines.append(f'  at: "{timestamp}"')
+
+    lines.extend(
+        [
+            "sources:",
+            '  - id: "egov-law"',
+            f'    resource: "{resource_url}"',
+            f'    title: "{meta.title}"',
+            f'    law_id: "{meta.law_id}"',
+        ]
+    )
+
+    lines.extend(
+        [
+            "tags:",
+            "  - law_definitions",
+            f"  - {meta.law_type}",
             "---",
         ]
     )
