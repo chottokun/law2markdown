@@ -83,7 +83,31 @@ Model Context Protocol (MCP) stdio JSON-RPC 2.0 サーバーを起動し、Claud
 uv run law2md mcp -d <output_dir>
 ```
 
-## 4. 関連概念
+### 3.5 データセット構築・配信 (`dataset`)
+
+日本の主要法令または一括法令を取得し、Parquetテーブル（Hugging Face向け）およびMarkdownアーカイブ（GitHub Releases向け）を構築・自動公開します。
+
+```bash
+# 主要法令（憲法、民法、刑法、商法等）の取得・変換・Parquet/アーカイブ構築・Hugging Face公開
+uv run law2md dataset build --scope core --upload-hf --repo-id "Chottokun/japan-laws-md"
+```
+
+- **オプション**:
+  - `--scope {core,custom}`: 法令取得スコープ（デフォルト: `core`）
+  - `-o, --output-dir`: ナレッジベース出力ディレクトリ
+  - `--parquet-out`: Parquetファイル出力先
+  - `--archive-out`: Markdownアーカイブ出力先（`.tar.zst` または `.tar.gz`）
+  - `--upload-hf`: Hugging Face Datasets への自動アップロード
+  - `--repo-id`: Hugging Face データセットID（例: `Chottokun/japan-laws-md`）
+  - `--token`: HF アクセストークン（未指定時は `HF_TOKEN` 環境変数）
+
+## 4. CI/CD ワークフロー (GitHub Actions)
+
+* `.github/workflows/ci.yml`: PR および `main` ブランチへのプッシュ時に自動でテスト・リント・フォーマット検証を実行。
+* `.github/workflows/build-dataset.yml`: 毎週日曜日（日本時間 月曜未明）の定期実行または手動トリガー（`workflow_dispatch`）により、法令データセットの自動ビルド・Hugging Face 公開・GitHub Releases 添付を実行。
+
+## 5. 関連概念
 
 * [変換パイプライン アーキテクチャ](../architecture/pipeline.md) - 内部コンポーネント詳細
 * [Wiki用 Markdown 出力詳細仕様書](../domain/wiki_markdown_spec.md) - 出力される Markdown の詳細構造
+

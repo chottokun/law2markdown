@@ -87,6 +87,18 @@ Claude Desktop や自律的 AI エージェントから上記の法探索ツー�
 uv run law2md mcp -d ./output
 ```
 
+### 5. データセット構築・Hugging Face 公開 (`dataset`)
+
+主要法令（憲法、民法、刑法、商法等）の自動取得、条文Parquet作成、Markdownアーカイブ生成、Hugging Faceへの公開を一括実行します。
+
+```bash
+# Hugging Face Datasets へ自動公開
+HF_TOKEN="<your_token>" uv run law2md dataset build --scope core --upload-hf --repo-id "Chottokun/japan-laws-md"
+```
+
+> [!TIP]
+> 公開済みデータセットは Hugging Face Datasets [Chottokun/japan-laws-md](https://huggingface.co/datasets/Chottokun/japan-laws-md) から誰でも Python 1行（`load_dataset("Chottokun/japan-laws-md")`）またはアーカイブ解凍で即座に利用可能です。
+
 ---
 
 ## 📁 出力構造
