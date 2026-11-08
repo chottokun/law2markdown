@@ -1,6 +1,8 @@
 # LLM-Wiki 変更ログ
 
 ## 2026-11-08
+* **Creation**: データセット構築・Hugging Face 公開モジュール (`dataset.py`) および CLI サブコマンド (`law2md dataset build`) の実装。主要基本法令（Core Laws）の自動ダウンロード、Parquetテーブル出力、Markdownアーカイブ生成、Dataset Card (`README.md`) 生成、Hugging Face Datasets への自動アップロードをサポート。
+* **Creation**: GitHub Actions 自動化ワークフロー (`.github/workflows/ci.yml`, `.github/workflows/build-dataset.yml`) の導入。PR/Push 時の継続的インテグレーションおよび毎週の日次自動データセット更新・GitHub Releases 添付を実現。
 * **Creation**: Model Context Protocol (MCP) stdio JSON-RPC 2.0 サーバー (`mcp_server.py`) の実装。AI エージェント向けに `get_article`, `get_hierarchy`, `trace_references`, `lookup_term` の4ツールを提供。
 * **Creation**: エージェント法探索クエリエンジン (`query.py`) および CLI サブコマンド (`law2md query`, `law2md mcp`) の実装。
 * **Creation**: 法令用語定義解析エンジン (`analyzer/definition.py`) および用語定義レジストリ (`definitions.md`) 自動生成機能の実装。法定定義規定から専門用語を自動索引化し、使用条文へのリンクおよび Frontmatter `defined_terms` を出力。

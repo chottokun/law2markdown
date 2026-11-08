@@ -92,6 +92,32 @@ def main() -> int:
     )
     mcp_parser.add_argument("-d", "--kb-dir", default="./output", help="ナレッジベースディレクトリ")
 
+    # dataset コマンド
+    ds_parser = subparsers.add_parser(
+        "dataset", help="Hugging Face / Releases 向けデータセット構築・配信"
+    )
+    ds_sub = ds_parser.add_subparsers(dest="dataset_cmd", help="データセット操作")
+
+    ds_build = ds_sub.add_parser("build", help="主要法令の取得・変換・Parquet/アーカイブ構築")
+    ds_build.add_argument(
+        "--scope", choices=["core", "custom"], default="core", help="法令取得スコープ"
+    )
+    ds_build.add_argument("-o", "--output-dir", default="./output/legal_kb", help="KB出力先")
+    ds_build.add_argument(
+        "--parquet-out", default="./output/laws_articles.parquet", help="Parquet出力先"
+    )
+    ds_build.add_argument(
+        "--archive-out", default="./output/laws-markdown.tar.zst", help="Archive出力先"
+    )
+    ds_build.add_argument("--upload-hf", action="store_true", help="Hugging Faceへ自動アップロード")
+    ds_build.add_argument(
+        "--repo-id", default="Chottokun/japan-laws-md", help="Hugging Face repo_id"
+    )
+    ds_build.add_argument(
+        "--token", default="", help="Hugging Face トークン (未指定時は HF_TOKEN 環境変数)"
+    )
+    ds_build.add_argument("--max-laws", type=int, default=None, help="最大処理法令数 (テスト用)")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -144,6 +170,76 @@ def main() -> int:
         elif args.command == "mcp":
             run_mcp_server(kb_dir=args.kb_dir)
             return 0
+        elif args.command == "dataset":
+            import os
+            from pathlib import Path
+
+            from law2markdown.dataset import (
+                CORE_LAWS,
+                collect_article_records,
+                create_markdown_tar_zst,
+                download_law_xml,
+                export_articles_parquet,
+                generate_dataset_card,
+                upload_to_huggingface,
+            )
+
+            if args.dataset_cmd == "build":
+                kb_path = Path(args.output_dir)
+                raw_xml_dir = Path("./tmp/raw_xml")
+                raw_xml_dir.mkdir(parents=True, exist_ok=True)
+
+                laws_to_process = list(CORE_LAWS.items())
+                if args.max_laws:
+                    laws_to_process = laws_to_process[: args.max_laws]
+
+                print(f"📦 データセット構築開始: {len(laws_to_process)} 件の法令を対象")
+                for i, (law_id, law_name) in enumerate(laws_to_process, 1):
+                    print(
+                        f"[{i}/{len(laws_to_process)}] ダウンロード & 変換中: "
+                        f"{law_name} ({law_id})..."
+                    )
+                    xml_file = raw_xml_dir / f"{law_id}.xml"
+                    download_law_xml(law_id, xml_file)
+                    convert_law_xml_file(str(xml_file), str(kb_path), law_id=law_id)
+
+                print("📊 条文レコードの集約と Parquet 出力中...")
+                records = collect_article_records(kb_path)
+                parquet_path = export_articles_parquet(records, Path(args.parquet_out))
+                print(f"✅ Parquet 作成完了: {parquet_path} ({len(records)} 条文)")
+
+                print("🗜️ Markdown アーカイブの圧縮中...")
+                archive_path = create_markdown_tar_zst(kb_path, Path(args.archive_out))
+                print(f"✅ アーカイブ作成完了: {archive_path}")
+
+                if args.upload_hf:
+                    hf_token = args.token or os.environ.get("HF_TOKEN", "")
+                    if not hf_token:
+                        print("❌ エラー: Hugging Face トークンが未指定です (HF_TOKEN)")
+                        return 1
+                    print(f"🚀 Hugging Face ({args.repo_id}) へアップロード中...")
+                    card_text = generate_dataset_card(
+                        law_count=len(laws_to_process),
+                        article_count=len(records),
+                    )
+                    files_to_upload = {
+                        archive_path.name: archive_path,
+                        parquet_path.name: parquet_path,
+                    }
+                    upload_to_huggingface(
+                        repo_id=args.repo_id,
+                        token=hf_token,
+                        files=files_to_upload,
+                        dataset_card_content=card_text,
+                    )
+                    print(
+                        f"🎉 Hugging Face 公開完了: https://huggingface.co/datasets/{args.repo_id}"
+                    )
+
+                return 0
+            else:
+                ds_parser.print_help()
+                return 1
         return 0
     except Exception as e:
         print(f"エラーが発生しました: {e}", file=sys.stderr)

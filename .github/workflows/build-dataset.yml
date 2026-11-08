@@ -1,0 +1,92 @@
+name: Build and Publish Legal Dataset
+
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: "法令スコープ (core: 主要基本法令, custom: カスタム)"
+        required: true
+        default: "core"
+        type: choice
+        options:
+          - "core"
+      upload_hf:
+        description: "Hugging Face Datasets へ公開するか"
+        required: true
+        default: true
+        type: boolean
+      create_release:
+        description: "GitHub Releases にアーカイブを添付するか"
+        required: true
+        default: true
+        type: boolean
+  schedule:
+    # 毎週日曜日 18:00 UTC (日本時間 月曜日 03:00) 定期更新
+    - cron: "0 18 * * 0"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Build Dataset and Export Artifacts
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          mkdir -p output
+          UPLOAD_FLAG=""
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.upload_hf }}" = "true" ]; then
+            UPLOAD_FLAG="--upload-hf"
+          fi
+          uv run law2md dataset build \
+            --scope ${{ github.event.inputs.scope || 'core' }} \
+            --output-dir ./output/legal_kb \
+            --parquet-out ./output/laws_articles.parquet \
+            --archive-out ./output/laws-markdown.tar.gz \
+            --repo-id "Chottokun/japan-laws-md" \
+            $UPLOAD_FLAG
+
+      - name: Create Date Tag for Release
+        if: (github.event_name == 'schedule' || github.event.inputs.create_release == 'true')
+        id: tag
+        run: |
+          echo "tag_name=dataset-$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+          echo "release_date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Publish to GitHub Releases
+        if: (github.event_name == 'schedule' || github.event.inputs.create_release == 'true')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag_name }}
+          name: "Japan Laws Markdown Dataset (${{ steps.tag.outputs.release_date }})"
+          body: |
+            ## 日本法令 Markdown データセット (${{ steps.tag.outputs.release_date }})
+            
+            e-Gov 法令データより自動変換された、LLM/RAG (Agentic Legal RAG) 向け Open Knowledge Format (OKF v0.2) 準拠のナレッジベースです。
+
+            ### 成果物
+            - `laws-markdown.tar.gz`: 全条文 Markdown ディレクトリ群の高圧縮アーカイブ
+            - `laws_articles.parquet`: 全条文レコード・階層パス・双方向参照関係を格納した Parquet テーブル
+            
+            ### Hugging Face Datasets
+            ブラウザ閲覧および Python `datasets` ライブラリ経由での利用は [Chottokun/japan-laws-md](https://huggingface.co/datasets/Chottokun/japan-laws-md) でも公開されています。
+          files: |
+            output/laws-markdown.tar.gz
+            output/laws_articles.parquet
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
