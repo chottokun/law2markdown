@@ -5,79 +5,72 @@
 [![License: PDDL](https://img.shields.io/badge/License-PDDL-blue.svg)](https://opendatacommons.org/licenses/pddl/)
 [![CI](https://github.com/chottokun/law2markdown/actions/workflows/ci.yml/badge.svg)](https://github.com/chottokun/law2markdown/actions/workflows/ci.yml)
 
-e-Gov 法令 XML データを、LLM / RAG および Web ビューワー（SimpleWiki 等）に最適化された **Open Knowledge Format (OKF)** 準拠の Markdown ファイル群へ**決定論的にパース・変換する CLI ツール**。
+e-Gov 法令 XML データを、Open Knowledge Format (OKF) 準拠の Markdown ファイル群へ決定論的に変換する CLI ツールです。条文単位のファイル分割、包含階層のメタデータ付与、相互参照関係の抽出、および RAG（Retrieval-Augmented Generation）向けインデックスの生成を行います。
 
 ---
 
-## 📦 公開データセットを今すぐ利用する
+## 公開データセット
 
-本ツールで変換された日本法令データセット（全公開法令および主要法令）は、**Hugging Face Datasets** および **GitHub Releases** にて完全無料・パブリックドメイン（著作権法第13条準拠）で公開・毎週定期更新されています。
+本ツールで変換した日本法令データセット（全法令および主要基本法令）は、Hugging Face Datasets および GitHub Releases にて公開・定期更新されています（日本の法令本文は著作権法第13条第1号により著作権の目的となりません）。
 
-### 1. Python (`datasets`) で条文を 1 行読み込み
+### Python (`datasets`) による読み込み
 ```python
 from datasets import load_dataset
 
-# Hugging Face から直接ロード（Parquet形式で超高速・ストリーミング可能）
+# Hugging Face から直接ロード（Parquet 形式、ストリーミング取得可能）
 dataset = load_dataset("Chottokun/japan-laws-md", split="train")
 
-# 条文の参照・階層パス・本文・定義語にアクセス
 article = dataset[0]
 print(article["title"])  # 例: 日本国憲法 第一条
 print(article["hierarchy_path"])  # 例: 日本国憲法 > 第一章　天皇 > 第一条
-print(article["content"])  # 原本そのままの条文Markdown
+print(article["content"])  # 条文本文（Markdown）
 ```
 
-### 2. ローカルナレッジベース（Markdown Wiki）として一括ダウンロード
-* [GitHub Releases](https://github.com/chottokun/law2markdown/releases) または [Hugging Face Files](https://huggingface.co/datasets/Chottokun/japan-laws-md/tree/main) から `laws-markdown.tar.gz` をダウンロードして解凍するだけで、条文単位（1条文1ファイル＋相互リンク完備）のローカルWikiが即座に構築できます。
+### アーカイブ（Markdown 一式）の利用
+[GitHub Releases](https://github.com/chottokun/law2markdown/releases) または [Hugging Face Files](https://huggingface.co/datasets/Chottokun/japan-laws-md/tree/main) から `laws-markdown.tar.gz` をダウンロードして解凍することで、条文単位で相互リンクされたローカルナレッジベースとして利用できます。
 
 ---
 
-## 🌟 主な特徴
+## 仕様と機能
 
-- **全法令種別対応 (法令標準 XML スキーマ v3 適合)**
-  - 憲法、法律、政令、勅令、府省令、規則、告示等の全ての e-Gov 法令 XML をパース。
-- **完全 ASIS（原本維持）原則**
-  - 法令本文の文字・助詞を 1 文字も改変せず、原文通りのテキストを維持。
-  - ルビ（`<Ruby>/<Rt>`）は親文字のみ非破壊抽出。
-  - 複雑な結合表は HTML `<table>`、数式は LaTeX (`$ ... $`) で GitHub Markdown 準拠レンダリング。
-- **OKF v0.2 完全準拠 & メタデータ自動補完**
-  - 全てのファイル（条文・附則・付録・目次）に `type`, `title`, `description`, `resource`（公式 e-Gov パーマリンク `https://laws.e-gov.go.jp/document?lawid=...`）, `status`, `generated: {by, at}`, `sources: [{id, resource, title, ...}]`, `tags` を含む [OKF v0.2](https://raw.githubusercontent.com/GoogleCloudPlatform/knowledge-catalog/refs/heads/main/okf/SPEC.md) 仕様の YAML Frontmatter を完全付与。
-  - 同封 CSV (`20.csv` 等) から `title_kana`, `promulgate_date`, `enforce_date`, `amend_law_title`, `amend_law_num`, `is_unexecuted` を自動抽出して Frontmatter に統合。
-- **Agentic Legal RAG（自律的法探索基盤）高度化機能**
-  - **完全階層パス (`hierarchy_path`)**: パンデクテン体系（編・章・節・款・目・条）をスコープ制御付きで追跡し、条文単体でベクトル化された場合も規律文脈を完全維持。
-  - **相互参照・委任グラフ (`outbound` / `inbound`)**: 条文内の相対参照（前条・次条）・明示参照（第〇条）・別表・政令委任を決定論的に抽出し、双方向グラフを Frontmatter および末尾セクションに自動構築。
-  - **法定用語定義レジストリ (`definitions.md`)**: 「〜とは、〜をいう」「以下〜という」等の定義規定から専門用語を自動索引化し、俗用意味と法的限定意味の混同を防止。
-  - **項・号行頭アンカー (`child_anchors`)**: 本文の文言を一切改変せず（原本維持）、項・号・細分号の行頭に `<a id="..."></a>` を配置し、Parent Document Retrieval における微小ブロックの検索・オフセット範囲を提供。
-- **高閲覧性・完全インデックス化ツリー**
-  - **極短シンプルフォルダ名**: `output/労働基準法/`, 重複時も `_2`, `_3` の最小連番。
-  - **最上位ポータル目次 (`output/index.md`)**: 法令種別（法律・政令・省令等）の自動分類・未施行タグ付き表示。
-  - **全サブディレクトリインデックス (`index.md`)**: `articles/index.md`, `suppl/index.md`, `appendix/index.md` を完備し、Web ビューワーでの 404 エラーや手詰まりを100%防止。
-  - **OS禁止文字サニタイズ**: 複数条文指定等のコロン `:` をハイフン `-`（`art_436-448...md`）へ完全変換し、クロスプラットフォームでの互換性を保証。
+- **法令 XML スキーマ対応**
+  - 法令標準 XML スキーマ v3 に適合（憲法、法律、政令、勅令、府省令、規則、告示）。
+- **条文テキストの原本保持（ASIS）**
+  - 条文本文の要約や改変を行わず、原文テキストを維持。
+  - ルビ（`<Ruby>/<Rt>`）は親文字を抽出。
+  - 表（`TableStruct`）は HTML `<table>`、数式（`ArithFormula`）は LaTeX (`$ ... $`) で出力。
+- **OKF v0.2 準拠のメタデータ付与**
+  - 条文・附則・付録・目次の各ファイルに YAML Frontmatter（`type`, `title`, `description`, `resource`, `status`, `generated`, `sources`, `tags`）を付与。
+  - 同封 CSV から公布日、施行日、改正情報、未施行フラグを抽出して統合。
+- **法探索（RAG）向け構造化**
+  - **包含階層パス (`hierarchy_path`)**: 編・章・節・款・目をスコープに沿って追跡し、条文 Frontmatter に記載。
+  - **相互参照関係 (`outbound_references` / `inbound_references`)**: 相対参照（前条・次条）、明示参照（第〇条）、別表、政令委任を抽出し、双方向の参照関係を Frontmatter および末尾セクションに出力。
+  - **用語定義レジストリ (`definitions.md`)**: 「〜とは、〜をいう」「以下〜という」等の定義規定から専門用語と定義元条文を抽出し、一覧化。
+  - **構文アンカーとオフセット (`child_anchors`)**: 項および号の行頭に `<a id="..."></a>` を配置し、Frontmatter に文字オフセット範囲（`start_offset`, `end_offset`）を記録。
+- **ファイル・ディレクトリ構成**
+  - 1 条文 = 1 ファイル（`articles/art_001_第一条.md`）。
+  - 同名法令は公布日・施行日等でソートし、枝番（`_2`, `_3`）により決定論的に重複を回避。
+  - ファイル名禁止文字（`:` 等）はハイフンに置換。
 
 ---
 
-## 🚀 セットアップ
+## セットアップ
 
 ### 前提条件
 - Python 3.12+
-- `uv` (推奨パッケージマネージャ)
+- `uv`
 
 ### インストール
 
 ```bash
-# クローン
-git clone https://github.com/user/law2markdown.git
+git clone https://github.com/chottokun/law2markdown.git
 cd law2markdown
-
-# 依存関係の同期
 uv sync
 ```
 
 ---
 
-## 💻 使い方 (CLI)
-
-`uv run law2md` コマンドを使用して変換および探索を行います。
+## 使用方法
 
 ### 1. 単一 XML ファイルの変換
 
@@ -88,28 +81,28 @@ uv run law2md convert path/to/law.xml -o ./output
 ### 2. e-Gov 分類 ZIP ファイルの一括変換
 
 ```bash
-uv run law2md convert-zip data/20_xml.zip -o ./output
+uv run law2md convert-zip data/category.zip -o ./output
 ```
 
 ### 3. 法探索クエリ (`query`)
 
 ```bash
-# 条文または特定項の本文・メタデータ取得
+# 条文または特定項の本文取得
 uv run law2md query get-article 労働基準法 1 -p 2 -d ./output
 
-# 上位階層および関連条文一覧の取得
+# 上位階層および同一階層の条文一覧取得
 uv run law2md query get-hierarchy 労働基準法 1 -d ./output
 
-# 相互参照グラフ（参照先・被参照元）の走査
+# 参照関係（参照先・被参照元）の走査
 uv run law2md query trace-references 労働基準法 1 -d ./output
 
-# 法定用語の厳密な定義照会
+# 法定用語の定義照会
 uv run law2md query lookup-term 労働基準法 労働者 -d ./output
 ```
 
-### 4. Agentic RAG 用 MCP サーバー起動 (`mcp`)
+### 4. MCP サーバー起動 (`mcp`)
 
-Claude Desktop や自律的 AI エージェントから上記の法探索ツールを呼び出すための stdio サーバーを起動します。
+Claude Desktop 等の MCP クライアント向け stdio サーバーを起動します。
 
 ```bash
 uv run law2md mcp -d ./output
@@ -117,70 +110,71 @@ uv run law2md mcp -d ./output
 
 ### 5. データセット構築・Hugging Face 公開 (`dataset`)
 
-主要法令（憲法、民法、刑法、商法等）の自動取得、条文Parquet作成、Markdownアーカイブ生成、Hugging Faceへの公開を一括実行します。
+主要基本法令（`--scope core`）または全法令（`--scope all`）の取得・変換・Parquet 出力・アーカイブ化・Hugging Face へのアップロードを行います。
 
 ```bash
-# Hugging Face Datasets へ自動公開
+# 主要法令の構築と Hugging Face への公開
 HF_TOKEN="<your_token>" uv run law2md dataset build --scope core --upload-hf --repo-id "Chottokun/japan-laws-md"
-```
 
-> [!TIP]
-> 公開済みデータセットは Hugging Face Datasets [Chottokun/japan-laws-md](https://huggingface.co/datasets/Chottokun/japan-laws-md) から誰でも Python 1行（`load_dataset("Chottokun/japan-laws-md")`）またはアーカイブ解凍で即座に利用可能です。
+# 全法令の一括構築
+uv run law2md dataset build --scope all -o ./output/legal_kb
+```
 
 ---
 
-## 📁 出力構造
+## 出力ディレクトリ構造
 
 ```
 output/
-├── index.md                      # [最上位ポータル目次] 全法令の自動分類一覧
-├── 労働基準法/                   # [極短フォルダ名] (重複時のみ 労働基準法_2)
-│   ├── index.md                  # [法令トップ目次] 条文・附則・付録・用語定義への総合案内
-│   ├── definitions.md            # [用語定義レジストリ] 法令内の定義用語・定義条文一覧
+├── index.md                      # 全法令一覧目次
+├── 労働基準法/                   # 法令フォルダ
+│   ├── index.md                  # 法令目次
+│   ├── definitions.md            # 用語定義一覧
 │   ├── articles/                 # 条文フォルダ (1条文 = 1ファイル)
-│   │   ├── index.md              # 条文サブインデックス
+│   │   ├── index.md              # 条文一覧
 │   │   ├── art_001_第一条.md
-│   │   └── art_436-448_...md     # [サニタイズ済] 禁止文字除去済ファイル名
+│   │   └── art_436-448_...md
 │   ├── suppl/                    # 附則フォルダ
-│   │   ├── index.md              # 附則サブインデックス
+│   │   ├── index.md              # 附則一覧
 │   │   ├── suppl_main.md         # 制定時附則
-│   │   └── suppl_amendments.md   # 沿革・改正附則一覧集約
+│   │   └── suppl_amendments.md   # 改正附則集約
 │   └── appendix/                 # 付録フォルダ
-│       ├── index.md              # 付録サブインデックス
-│       ├── table_001_別表第一.md # 独立別表
-│       └── appdx_styles.md       # 様式・図・付録一覧集約
+│       ├── index.md              # 付録一覧
+│       ├── table_001_別表第一.md # 別表
+│       └── appdx_styles.md       # 様式・図集約
 ```
 
 ---
 
-## 🧪 開発・テスト
+## テスト
 
 ```bash
 # テスト実行
 uv run pytest
 
-# Lint / Format チェック
+# 静的解析・フォーマット検証
 uv run ruff check
 uv run ruff format --check
 
 # セキュリティ監査
-uv audit
+uv run audit
 ```
 
 ---
 
-## 📚 ドキュメント (LLM-Wiki / OKF)
+## ドキュメント
 
 プロジェクトの設計方針、変換仕様、アーキテクチャの詳細は [`docs/`](./docs/README.md) 配下に OKF (Open Knowledge Format v0.2) 形式で整備されています。
 
-* [📑 ナレッジインデックス (`docs/README.md`)](./docs/README.md)
-  * [🏛️ Architecture (`docs/architecture/`)](./docs/architecture/README.md): 全体パイプライン設計・決定論的変換設計
-  * [📖 Domain (`docs/domain/`)](./docs/domain/README.md): 法令 XML 変換仕様・Wiki用 Markdown / Frontmatter 詳細仕様
-  * [⚙️ Infrastructure (`docs/infrastructure/`)](./docs/infrastructure/README.md): Python/uv 実行環境および CLI 仕様
-  * [📝 Change Log (`docs/log.md`)](./docs/log.md): ナレッジベースの更新履歴
+* [ナレッジインデックス (`docs/README.md`)](./docs/README.md)
+  * [Architecture (`docs/architecture/`)](./docs/architecture/README.md): 全体パイプライン設計
+  * [Domain (`docs/domain/`)](./docs/domain/README.md): 法令 XML 変換仕様・Markdown 出力仕様
+  * [Infrastructure (`docs/infrastructure/`)](./docs/infrastructure/README.md): 実行環境および CLI 仕様
+  * [Change Log (`docs/log.md`)](./docs/log.md): 更新履歴
 
 ---
 
-## 📜 ライセンス
+## ライセンス
 
-[MIT License](LICENSE)
+* ツール本体: [MIT License](LICENSE)
+* 法令本文データ: パブリックドメイン（著作権法第13条第1号）
