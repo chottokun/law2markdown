@@ -48,7 +48,12 @@ def render_paragraph(p: ParagraphContent) -> str:
     return "\n".join(lines)
 
 
-def render_article_markdown(meta: LawMetadata, art: ArticleContent) -> str:
+def render_article_markdown(
+    meta: LawMetadata,
+    art: ArticleContent,
+    articles_map: dict[str, ArticleContent] | None = None,
+    appendices_map: dict[str, AppdxContent] | None = None,
+) -> str:
     """Render ArticleContent to Markdown body."""
     lines = []
 
@@ -66,6 +71,45 @@ def render_article_markdown(meta: LawMetadata, art: ArticleContent) -> str:
     for p in art.paragraphs:
         lines.append(render_paragraph(p))
         lines.append("")
+
+    # Supplemental reference section (ASIS body strictly preserved above)
+    has_refs = bool(art.outbound_references or art.inbound_references)
+    if has_refs and (articles_map or appendices_map):
+        lines.append("\n---")
+        lines.append("## 参照・関連規定\n")
+
+        if art.outbound_references:
+            lines.append("### 参照条文・付録\n")
+            for ref_id in art.outbound_references:
+                target_art = articles_map.get(ref_id) if articles_map else None
+                if target_art:
+                    label = (
+                        f"{target_art.title}{target_art.caption}"
+                        if target_art.caption
+                        else target_art.title
+                    )
+                    lines.append(f"* [{label}](./{ref_id}.md)")
+                elif appendices_map and ref_id in appendices_map:
+                    target_app = appendices_map[ref_id]
+                    lines.append(f"* [{target_app.title}](../appendix/{ref_id}.md)")
+                else:
+                    lines.append(f"* [{ref_id}](./{ref_id}.md)")
+            lines.append("")
+
+        if art.inbound_references:
+            lines.append("### 被参照条文\n")
+            for ref_id in art.inbound_references:
+                target_art = articles_map.get(ref_id) if articles_map else None
+                if target_art:
+                    label = (
+                        f"{target_art.title}{target_art.caption}"
+                        if target_art.caption
+                        else target_art.title
+                    )
+                    lines.append(f"* [{label}](./{ref_id}.md)")
+                else:
+                    lines.append(f"* [{ref_id}](./{ref_id}.md)")
+            lines.append("")
 
     return "\n".join(lines).strip()
 

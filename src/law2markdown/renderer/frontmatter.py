@@ -58,6 +58,20 @@ def render_article_frontmatter(
     if meta.is_unexecuted:
         lines.append("is_unexecuted: true")
 
+    if art.outbound_references:
+        lines.append("outbound_references:")
+        for ref in art.outbound_references:
+            lines.append(f'  - "{ref}"')
+    else:
+        lines.append("outbound_references: []")
+
+    if art.inbound_references:
+        lines.append("inbound_references:")
+        for ref in art.inbound_references:
+            lines.append(f'  - "{ref}"')
+    else:
+        lines.append("inbound_references: []")
+
     if timestamp:
         lines.append("generated:")
         lines.append('  by: "process:law2markdown"')

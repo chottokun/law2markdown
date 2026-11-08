@@ -6,6 +6,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+from law2markdown.analyzer.reference import build_reference_graph
 from law2markdown.models import AppdxContent, LawMetadata
 from law2markdown.parser.csv_parser import parse_law_csv_content
 from law2markdown.parser.xml_parser import parse_law_xml
@@ -77,11 +78,18 @@ def convert_law_xml_content_with_meta(
 
     iso_timestamp = datetime.datetime.now(datetime.UTC).isoformat()
 
+    # Build reference graph
+    build_reference_graph(parsed.articles, parsed.appendices)
+    articles_map = {a.article_id: a for a in parsed.articles}
+    appendices_map = {app.appdx_id: app for app in parsed.appendices}
+
     # 1. Export Articles
     for art in parsed.articles:
         art_file = articles_path / f"{art.article_id}.md"
         fm = render_article_frontmatter(meta, art, timestamp=iso_timestamp)
-        body = render_article_markdown(meta, art)
+        body = render_article_markdown(
+            meta, art, articles_map=articles_map, appendices_map=appendices_map
+        )
         art_file.write_text(f"{fm}\n\n{body}\n", encoding="utf-8")
 
     # Export articles/index.md
