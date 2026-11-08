@@ -67,10 +67,15 @@ def convert_law_xml_content_with_meta(
         dir_name = target_dir_name
     else:
         # Human readable dir name: Clean law title (Plan B)
-        clean_law_title = re.sub(r"[^\w\u3000-\u30fe\u4e00-\u9fa5]", "", meta.title)
+        clean_law_title = re.sub(r"[^\w]", "", meta.title)
         if len(clean_law_title) > 20:
             clean_law_title = clean_law_title[:20] + "…"
         dir_name = clean_law_title or target_law_id
+
+    # Defensive guard: ensure dir_name does not exceed 200 bytes
+    dir_name_bytes = dir_name.encode("utf-8")
+    if len(dir_name_bytes) > 200:
+        dir_name = dir_name_bytes[:190].decode("utf-8", errors="ignore") + "…"
 
     base_path = Path(output_dir) / dir_name
     articles_path = base_path / "articles"
@@ -271,7 +276,7 @@ def convert_law_zip_file(zip_path: str, output_dir: str) -> list[Path]:
                 parsed = parse_law_xml(xml_content, law_id=law_id)
                 meta = parsed.metadata
 
-                clean_title = re.sub(r"[^\w\u3000-\u30fe\u4e00-\u9fa5]", "", meta.title)
+                clean_title = re.sub(r"[^\w]", "", meta.title)
                 if len(clean_title) > 20:
                     clean_title = clean_title[:20] + "…"
                 base_dir_name = clean_title or law_id or "unknown_law"
