@@ -1,5 +1,9 @@
 # LLM-Wiki 変更ログ
 
+## 2026-11-20
+* **Fix**: `build-dataset.yml` の定期実行（schedule）時に `inputs.scope` が空となり `core`（主要14法令）へフォールバックしていた不具合を修正。既定値を `all` に変更。2026-11-15 の定期リリースは 14 法令・5,248 条文に縮退していた。
+* **Update**: GitHub Releases 本文にスコープ・法令数・条文数を Parquet から集計して記載するよう変更。
+
 ## 2026-11-08
 * **Creation**: データセット構築・Hugging Face 公開モジュール (`dataset.py`) および CLI サブコマンド (`law2md dataset build`) の実装。主要基本法令（Core Laws）の自動ダウンロード、Parquetテーブル出力、Markdownアーカイブ生成、Dataset Card (`README.md`) 生成、Hugging Face Datasets への自動アップロードをサポート。
 * **Creation**: GitHub Actions 自動化ワークフロー (`.github/workflows/ci.yml`, `.github/workflows/build-dataset.yml`) の導入。PR/Push 時の継続的インテグレーションおよび毎週の日次自動データセット更新・GitHub Releases 添付を実現。

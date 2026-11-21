@@ -61,13 +61,25 @@ jobs:
           if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.upload_hf }}" = "true" ]; then
             UPLOAD_FLAG="--upload-hf"
           fi
+          # schedule イベントでは inputs が空になるため、既定値は all とする
           uv run law2md dataset build \
-            --scope ${{ github.event.inputs.scope || 'core' }} \
+            --scope ${{ github.event.inputs.scope || 'all' }} \
             --output-dir ./output/legal_kb \
             --parquet-out ./output/laws_articles.parquet \
             --archive-out ./output/laws-markdown.tar.gz \
             --repo-id "Chottokun/japan-laws-md" \
             $UPLOAD_FLAG
+
+      - name: Collect Dataset Stats
+        id: stats
+        run: |
+          uv run python -c "
+          import pyarrow.compute as pc
+          import pyarrow.parquet as pq
+          t = pq.read_table('output/laws_articles.parquet', columns=['law_id'])
+          print(f'law_count={len(pc.unique(t[\"law_id\"]))}')
+          print(f'article_count={t.num_rows}')
+          " >> $GITHUB_OUTPUT
 
       - name: Create Date Tag for Release
         if: (github.event_name == 'schedule' || github.event.inputs.create_release == 'true')
@@ -75,6 +87,7 @@ jobs:
         run: |
           echo "tag_name=dataset-$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
           echo "release_date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "scope=${{ github.event.inputs.scope || 'all' }}" >> $GITHUB_OUTPUT
 
       - name: Publish to GitHub Releases
         if: (github.event_name == 'schedule' || github.event.inputs.create_release == 'true')
@@ -86,6 +99,11 @@ jobs:
             ## 日本法令 Markdown データセット (${{ steps.tag.outputs.release_date }})
             
             e-Gov 法令データより自動変換された、LLM/RAG (Agentic Legal RAG) 向け Open Knowledge Format (OKF v0.2) 準拠のナレッジベースです。
+
+            ### 収録内容
+            - スコープ: `${{ steps.tag.outputs.scope }}`
+            - 法令数: ${{ steps.stats.outputs.law_count }}
+            - 条文数: ${{ steps.stats.outputs.article_count }}
 
             ### 成果物
             - `laws-markdown.tar.gz`: 全条文 Markdown ディレクトリ群の高圧縮アーカイブ
