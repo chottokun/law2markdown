@@ -1,4 +1,4 @@
-export type TabId = 'viewer' | 'graph' | 'analytics';
+export type TabId = 'viewer' | 'graph' | 'diff' | 'glossary' | 'analytics';
 
 export type DbStatus = 'idle' | 'initializing' | 'ready' | 'error';
 
@@ -58,4 +58,28 @@ export interface ToastMessage {
   id: number;
   kind: 'info' | 'success' | 'error';
   text: string;
+}
+
+export interface ArticleContentRow {
+  article_num: string;
+  hierarchy_path: string;
+  title: string;
+  content: string;
+}
+
+export interface PopularTermEntry {
+  term: string;
+  law_count: number;
+  occurrence_count: number;
+}
+
+export interface TermDefinitionHit {
+  law_id: string;
+  law_num: string;
+  law_title: string;
+  article_num: string;
+  hierarchy_path: string;
+  title: string;
+  matched_terms: string[];
+  snippet: string;
 }

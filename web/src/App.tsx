@@ -1,6 +1,16 @@
-import { BarChart3, BookOpen, ExternalLink, Network, Scale } from 'lucide-react';
+import {
+  BarChart3,
+  BookMarked,
+  BookOpen,
+  ExternalLink,
+  GitCompare,
+  Network,
+  Scale,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { AnalyticsTab } from './components/AnalyticsTab';
+import { DiffTab } from './components/DiffTab';
+import { GlossaryTab } from './components/GlossaryTab';
 import { GraphTab } from './components/GraphTab';
 import { ViewerTab } from './components/ViewerTab';
 import { CORE_LAWS, GITHUB_REPO_URL, HF_DATASET_URL } from './lib/constants';
@@ -11,7 +21,11 @@ function parseHashState(): { tab: TabId; lawId: string | null; articleNum: strin
   const raw = window.location.hash.replace(/^#\/?/, '');
   const [pathPart, queryPart] = raw.split('?');
   const tab: TabId =
-    pathPart === 'graph' || pathPart === 'analytics' || pathPart === 'viewer'
+    pathPart === 'graph' ||
+    pathPart === 'diff' ||
+    pathPart === 'glossary' ||
+    pathPart === 'analytics' ||
+    pathPart === 'viewer'
       ? pathPart
       : 'viewer';
   const params = new URLSearchParams(queryPart ?? '');
@@ -24,8 +38,8 @@ function parseHashState(): { tab: TabId; lawId: string | null; articleNum: strin
 
 function writeHashState(tab: TabId, lawId: string | null, articleNum: string | null) {
   const params = new URLSearchParams();
-  if (lawId) params.set('law', lawId);
-  if (articleNum && tab !== 'analytics') params.set('article', articleNum);
+  if (lawId && (tab === 'viewer' || tab === 'graph')) params.set('law', lawId);
+  if (articleNum && (tab === 'viewer' || tab === 'graph')) params.set('article', articleNum);
   const qs = params.toString();
   const nextHash = qs ? `#/${tab}?${qs}` : `#/${tab}`;
   if (window.location.hash !== nextHash) {
@@ -148,6 +162,22 @@ export function App() {
           </button>
           <button
             type="button"
+            className={`tab-btn ${activeTab === 'diff' ? 'active' : ''}`}
+            onClick={() => setActiveTab('diff')}
+          >
+            <GitCompare size={15} />
+            新旧Diff
+          </button>
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'glossary' ? 'active' : ''}`}
+            onClick={() => setActiveTab('glossary')}
+          >
+            <BookMarked size={15} />
+            用語辞典
+          </button>
+          <button
+            type="button"
             className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
             onClick={() => setActiveTab('analytics')}
           >
@@ -218,6 +248,16 @@ export function App() {
                 onSelectLaw={handleSelectLaw}
                 onOpenInViewer={handleOpenInViewer}
               />
+            )}
+            {activeTab === 'diff' && (
+              <DiffTab
+                catalog={catalog}
+                onOpenInViewer={handleOpenInViewer}
+                onNotify={notify}
+              />
+            )}
+            {activeTab === 'glossary' && (
+              <GlossaryTab onOpenInViewer={handleOpenInViewer} onNotify={notify} />
             )}
             {activeTab === 'analytics' && (
               <AnalyticsTab onOpenLawInViewer={handleOpenInViewer} onNotify={notify} />
