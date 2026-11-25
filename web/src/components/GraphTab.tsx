@@ -28,6 +28,7 @@ export function GraphTab({
 
   const [articles, setArticles] = useState<ArticleSummary[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [layoutKind, setLayoutKind] = useState<LayoutKind>('cose');
   const [nodeSearch, setNodeSearch] = useState('');
   const [focusedArticleNum, setFocusedArticleNum] = useState<string | null>(selectedArticleNum);
@@ -39,16 +40,26 @@ export function GraphTab({
   useEffect(() => {
     if (!selectedLawId) {
       setArticles([]);
+      setError(null);
+      setLoading(false);
       return;
     }
     let cancelled = false;
     setLoading(true);
+    setError(null);
     fetchLawArticles(selectedLawId)
       .then((list) => {
-        if (!cancelled) setArticles(list);
+        if (!cancelled) {
+          setArticles(list);
+          setLoading(false);
+        }
       })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+      .catch((err) => {
+        if (!cancelled) {
+          setArticles([]);
+          setError(err instanceof Error ? err.message : '参照データの読み込みに失敗しました');
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -207,8 +218,23 @@ export function GraphTab({
       }
     }
 
+    cy.resize();
+    cy.one('layoutstop', () => {
+      cy.resize();
+      cy.fit(undefined, 30);
+    });
+
+    const observer =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+            cy.resize();
+          })
+        : null;
+    observer?.observe(container);
+
     cyRef.current = cy;
     return () => {
+      observer?.disconnect();
       cy.destroy();
       cyRef.current = null;
     };
@@ -313,11 +339,24 @@ export function GraphTab({
           </div>
         </div>
 
-        {loading ? (
-          <div className="empty-state">ネットワークデータを構築中...</div>
-        ) : (
+        <div className="graph-canvas-wrap">
           <div ref={containerRef} className="graph-canvas" />
-        )}
+          {loading && (
+            <div className="graph-overlay">ネットワークデータを構築中...</div>
+          )}
+          {!loading && error && (
+            <div className="graph-overlay">
+              <div className="error-banner">{error}</div>
+            </div>
+          )}
+          {!loading && !error && graph.nodes.length === 0 && (
+            <div className="graph-overlay">
+              {selectedLawId
+                ? '表示する条文ノードがありません'
+                : '左上のリストから法令を選択してください'}
+            </div>
+          )}
+        </div>
       </div>
 
       <aside className="graph-inspector">
