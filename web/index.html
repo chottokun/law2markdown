@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      TODO(security): DuckDB-Wasm requires 'wasm-unsafe-eval' for WebAssembly compilation and
+      worker-src blob: for bundled worker execution; Cytoscape.js and Chart.js apply runtime
+      inline style attributes, requiring style-src 'unsafe-inline'. No external CDN scripts are used.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self' https://huggingface.co https://*.huggingface.co https://*.hf.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self';"
+    />
+    <title>日本法令 Explorer | law2markdown</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

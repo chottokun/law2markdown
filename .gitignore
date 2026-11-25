@@ -77,3 +77,7 @@ plan/
 output_sample/
 *.zip
 output_sample.zip
+
+# Web frontend
+web/node_modules/
+web/dist/
