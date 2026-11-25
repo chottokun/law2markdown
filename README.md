@@ -29,6 +29,20 @@ print(article["content"])  # 条文本文（Markdown）
 ### アーカイブ（Markdown 一式）の利用
 [GitHub Releases](https://github.com/chottokun/law2markdown/releases) または [Hugging Face Files](https://huggingface.co/datasets/Chottokun/japan-laws-md/tree/main) から `laws-markdown.tar.gz` をダウンロードして解凍することで、条文単位で相互リンクされたローカルナレッジベースとして利用できます。
 
+### Web ビューワー＆分析ダッシュボード (GitHub Pages)
+`web/` 配下に、Hugging Face 上の `laws_articles.parquet` をブラウザ内の **DuckDB-Wasm** から直接クエリする静的 Web アプリ（GitHub Pages: `https://chottokun.github.io/law2markdown/`）を含んでいます。
+
+* **条文ビューワー**: 法令一覧フィルタ、階層ツリー目次、全法令横断キーワード検索、参照条文ジャンプ、RAG プロンプト用コピー
+* **参照ネットワーク**: Cytoscape.js による同一法令内の条文間参照グラフ・ハブ条文強調・リンク・トレーサー
+* **アナリティクス & SQL Sandbox**: Chart.js による元号別分布・条文数/定義用語数ランキング、自由 SQL クエリ実行（CSV/JSON エクスポート対応）
+
+```bash
+# ローカルで Web アプリを起動する場合 (Node.js 20+)
+cd web
+npm ci
+npm run dev
+```
+
 ---
 
 ## 仕様と機能
