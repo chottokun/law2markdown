@@ -1,5 +1,6 @@
 # law2markdown
 
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Web%20Explorer-0ea5e9)](https://chottokun.github.io/law2markdown/)
 [![Hugging Face Datasets](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Datasets-yellow)](https://huggingface.co/datasets/Chottokun/japan-laws-md)
 [![GitHub Releases](https://img.shields.io/github/v/release/chottokun/law2markdown?label=Releases)](https://github.com/chottokun/law2markdown/releases)
 [![License: PDDL](https://img.shields.io/badge/License-PDDL-blue.svg)](https://opendatacommons.org/licenses/pddl/)
@@ -30,11 +31,13 @@ print(article["content"])  # 条文本文（Markdown）
 [GitHub Releases](https://github.com/chottokun/law2markdown/releases) または [Hugging Face Files](https://huggingface.co/datasets/Chottokun/japan-laws-md/tree/main) から `laws-markdown.tar.gz` をダウンロードして解凍することで、条文単位で相互リンクされたローカルナレッジベースとして利用できます。
 
 ### Web ビューワー＆分析ダッシュボード (GitHub Pages)
-`web/` 配下に、Hugging Face 上の `laws_articles.parquet` をブラウザ内の **DuckDB-Wasm** から直接クエリする静的 Web アプリ（GitHub Pages: `https://chottokun.github.io/law2markdown/`）を含んでいます。
+`web/` 配下に、Hugging Face 上の `laws_articles.parquet`（および事前集計 JSON `laws_summary.json`）をブラウザ内の **DuckDB-Wasm** から直接クエリする静的 Web アプリ（[日本法令 Explorer](https://chottokun.github.io/law2markdown/)）を含んでいます。
 
 * **条文ビューワー**: 法令一覧フィルタ、階層ツリー目次、全法令横断キーワード検索、参照条文ジャンプ、RAG プロンプト用コピー
-* **参照ネットワーク**: Cytoscape.js による同一法令内の条文間参照グラフ・ハブ条文強調・リンク・トレーサー
-* **アナリティクス & SQL Sandbox**: Chart.js による元号別分布・条文数/定義用語数ランキング、自由 SQL クエリ実行（CSV/JSON エクスポート対応）
+* **参照ネットワーク**: Cytoscape.js による同一法令内の条文間参照グラフ（ハブ条文強調・孤立ノードフィルタ・ズーム操作・リンク・トレーサー）
+* **新旧 Diff ビューワー**: 同一法令の複数バージョン（現行版・未施行改正版など）を行単位の差分で比較
+* **横断・法定用語辞典**: `defined_terms` に基づく主要定義用語ランキングおよび法令横断での定義規定比較
+* **アナリティクス & SQL Sandbox**: Chart.js による元号別分布・条文数/定義用語数ランキング、読み取り専用 SQL クエリ実行（CSV/JSON エクスポート対応）
 
 ```bash
 # ローカルで Web アプリを起動する場合 (Node.js 20+)
