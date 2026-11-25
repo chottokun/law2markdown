@@ -1,5 +1,6 @@
 """Unit tests for law2markdown dataset module."""
 
+import json
 import tempfile
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from law2markdown.dataset import (
     collect_article_records,
     create_markdown_tar_zst,
     export_articles_parquet,
+    export_summary_json,
     generate_dataset_card,
     parse_frontmatter,
 )
@@ -100,3 +102,62 @@ def test_generate_dataset_card() -> None:
     assert "Chottokun/japan-laws-md" in card
     assert "**収録法令数**: 14 件" in card
     assert "**総条文レコード数**: 500 条" in card
+
+
+def test_collect_skips_index_and_exports_deduped_summary_json() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        art_dir = Path(tmpdir) / "law_a" / "articles"
+        art_dir.mkdir(parents=True)
+        (art_dir / "index.md").write_text(
+            "---\ntitle: 'テスト法 目次'\nlaw_id: '129AC0000000089_20250401_001'\n---\n目次",
+            encoding="utf-8",
+        )
+        (art_dir / "art_001_第一条.md").write_text(
+            """---
+title: "テスト法 第一条"
+law_id: "129AC0000000089_20250401_001"
+law_num: "明治二十九年法律第八十九号"
+article_num: "1"
+hierarchy_path: "テスト法 > 第一条"
+outbound_references: ["art_002_第二条"]
+inbound_references: []
+defined_terms: ["契約"]
+---
+本文1
+""",
+            encoding="utf-8",
+        )
+
+        art_dir_v2 = Path(tmpdir) / "law_a_2" / "articles"
+        art_dir_v2.mkdir(parents=True)
+        (art_dir_v2 / "art_001_第一条.md").write_text(
+            """---
+title: "テスト法 第一条"
+law_id: "129AC0000000089_20260401_002"
+law_num: "明治二十九年法律第八十九号"
+article_num: "1"
+hierarchy_path: "テスト法 > 第一条"
+outbound_references: []
+inbound_references: []
+defined_terms: ["契約", "債権"]
+---
+本文2
+""",
+            encoding="utf-8",
+        )
+
+        records = collect_article_records(Path(tmpdir))
+        assert len(records) == 2
+
+        summary_path = Path(tmpdir) / "laws_summary.json"
+        export_summary_json(records, summary_path)
+        data = json.loads(summary_path.read_text(encoding="utf-8"))
+
+        assert len(data["catalog"]) == 2
+        assert data["analytics"]["totalLaws"] == 1
+        assert data["analytics"]["totalLawVersions"] == 2
+        assert data["analytics"]["totalArticles"] == 2
+        assert data["analytics"]["totalOutboundEdges"] == 1
+        assert data["analytics"]["totalDefinedTerms"] == 3
+        assert len(data["analytics"]["topLawsByArticles"]) == 1
+        assert len(data["analytics"]["topLawsByTerms"]) == 1
