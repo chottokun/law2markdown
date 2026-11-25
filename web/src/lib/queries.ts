@@ -1,3 +1,4 @@
+import { deduplicateLawCatalog, deduplicateLawRanking } from './analyticsHelpers';
 import { getDuckDb } from './duckdb';
 import { extractEraFromLawNum } from './graphBuilder';
 import { stripHtmlTags } from './sanitize';
@@ -243,18 +244,20 @@ export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
   }
 
   const catalog = await fetchLawCatalog();
-  const totalLaws = catalog.length;
+  const uniqueCatalog = deduplicateLawCatalog(catalog);
+  const totalLawVersions = catalog.length;
+  const totalLaws = uniqueCatalog.length;
   const totalArticles = catalog.reduce((acc, item) => acc + item.article_count, 0);
 
   const eraOrder = ['明治', '大正', '昭和', '平成', '令和', 'その他'];
   const eraMap = new Map<string, number>(eraOrder.map((e) => [e, 0]));
-  for (const law of catalog) {
+  for (const law of uniqueCatalog) {
     const era = extractEraFromLawNum(law.law_num);
     eraMap.set(era, (eraMap.get(era) ?? 0) + 1);
   }
   const eraDistribution = eraOrder.map((era) => ({ era, count: eraMap.get(era) ?? 0 }));
 
-  const topLawsByArticles = catalog.slice(0, 15).map((item) => ({
+  const topLawsByArticles = uniqueCatalog.slice(0, 15).map((item) => ({
     law_id: item.law_id,
     law_title: item.law_title,
     law_num: item.law_num,
@@ -271,25 +274,37 @@ export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
   const totalsRow = (totalsTable.toArray()[0] ?? {}) as Record<string, unknown>;
 
   const topTermsTable = await conn.query(`
-    SELECT
-      law_id,
-      MIN(law_title) AS law_title,
-      SUM(LEN(defined_terms)) AS term_count
-    FROM laws_articles
-    GROUP BY law_id
-    HAVING SUM(LEN(defined_terms)) > 0
+    SELECT law_id, law_title, term_count
+    FROM (
+      SELECT
+        law_id,
+        MIN(law_title) AS law_title,
+        SUM(LEN(defined_terms)) AS term_count,
+        ROW_NUMBER() OVER (
+          PARTITION BY split_part(law_id, '_', 1)
+          ORDER BY SUM(LEN(defined_terms)) DESC, law_id ASC
+        ) AS rn
+      FROM laws_articles
+      GROUP BY law_id
+      HAVING SUM(LEN(defined_terms)) > 0
+    )
+    WHERE rn = 1
     ORDER BY term_count DESC
-    LIMIT 10
+    LIMIT 30
   `);
-  const topLawsByTerms = (topTermsTable.toArray() as Record<string, unknown>[]).map((row) => ({
-    law_id: String(row.law_id ?? ''),
-    law_title: String(row.law_title ?? ''),
-    count: toNumber(row.term_count),
-  }));
+  const topLawsByTerms = deduplicateLawRanking(
+    (topTermsTable.toArray() as Record<string, unknown>[]).map((row) => ({
+      law_id: String(row.law_id ?? ''),
+      law_title: String(row.law_title ?? ''),
+      count: toNumber(row.term_count),
+    })),
+    10,
+  );
 
   analyticsCache = {
     totalArticles,
     totalLaws,
+    totalLawVersions,
     totalOutboundEdges: toNumber(totalsRow.total_edges),
     totalDefinedTerms: toNumber(totalsRow.total_terms),
     eraDistribution,

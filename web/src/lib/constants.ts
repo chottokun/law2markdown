@@ -40,13 +40,21 @@ export const SQL_PRESETS: SqlPreset[] = [
   {
     id: 'top-laws',
     label: '条文数 Top 15 法令',
-    description: '収録条文数が多い上位15法令を集計',
-    sql: `SELECT
-  law_title,
-  law_num,
-  COUNT(*) AS article_count
-FROM laws_articles
-GROUP BY law_id, law_title, law_num
+    description: '同一法令の改正版を集約し、収録条文数が多い上位15法令を集計',
+    sql: `SELECT law_title, law_num, article_count
+FROM (
+  SELECT
+    MIN(law_title) AS law_title,
+    MIN(law_num) AS law_num,
+    COUNT(*) AS article_count,
+    ROW_NUMBER() OVER (
+      PARTITION BY split_part(law_id, '_', 1)
+      ORDER BY COUNT(*) DESC, law_id ASC
+    ) AS rn
+  FROM laws_articles
+  GROUP BY law_id
+)
+WHERE rn = 1
 ORDER BY article_count DESC
 LIMIT 15`,
   },

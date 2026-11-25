@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { SQL_PRESETS } from './constants';
 import { rowsToCsv, validateReadOnlySql } from './sqlSafety';
 
 describe('validateReadOnlySql', () => {
@@ -28,6 +29,12 @@ describe('validateReadOnlySql', () => {
 
   it('allows semicolons inside string literals', () => {
     expect(validateReadOnlySql("SELECT ';' AS sep FROM laws_articles LIMIT 1").ok).toBe(true);
+  });
+
+  it('allows all built-in SQL presets', () => {
+    for (const preset of SQL_PRESETS) {
+      expect(validateReadOnlySql(preset.sql).ok).toBe(true);
+    }
   });
 });
 

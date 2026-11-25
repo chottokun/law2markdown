@@ -39,6 +39,7 @@ export interface SearchResultEntry {
 export interface AnalyticsSummary {
   totalArticles: number;
   totalLaws: number;
+  totalLawVersions: number;
   totalOutboundEdges: number;
   totalDefinedTerms: number;
   eraDistribution: { era: string; count: number }[];

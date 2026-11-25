@@ -206,7 +206,9 @@ export function AnalyticsTab({ onOpenLawInViewer, onNotify }: AnalyticsTabProps)
           <>
             <div className="kpi-grid">
               <div className="kpi-card">
-                <div className="kpi-label">収録法令数</div>
+                <div className="kpi-label">
+                  収録法令数（改正版計 {summary.totalLawVersions.toLocaleString()} 件）
+                </div>
                 <div className="kpi-value">{summary.totalLaws.toLocaleString()}</div>
               </div>
               <div className="kpi-card">
