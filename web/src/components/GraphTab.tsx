@@ -1,5 +1,5 @@
 import cytoscape, { type Core, type NodeSingular } from 'cytoscape';
-import { BookOpen, Maximize2, Search } from 'lucide-react';
+import { BookOpen, Maximize2, Search, ZoomIn, ZoomOut } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CORE_LAWS } from '../lib/constants';
 import { buildLawGraphElements, parseRefArticleKey } from '../lib/graphBuilder';
@@ -108,6 +108,9 @@ export function GraphTab({
     const cy = cytoscape({
       container,
       elements: [...graph.nodes, ...graph.edges],
+      wheelSensitivity: 0.2,
+      minZoom: 0.1,
+      maxZoom: 4,
       style: [
         {
           selector: 'node',
@@ -271,6 +274,22 @@ export function GraphTab({
     }
   };
 
+  const handleZoomBy = (factor: number) => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    const nextZoom = Math.min(4, Math.max(0.1, cy.zoom() * factor));
+    cy.animate({
+      zoom: {
+        level: nextZoom,
+        renderedPosition: {
+          x: cy.width() / 2,
+          y: cy.height() / 2,
+        },
+      },
+      duration: 150,
+    });
+  };
+
   const articleNumSet = useMemo(() => new Set(articles.map((a) => a.article_num)), [articles]);
 
   return (
@@ -327,15 +346,37 @@ export function GraphTab({
               </div>
             </form>
 
-            <button
-              type="button"
-              className="btn"
-              onClick={() => cyRef.current?.fit(undefined, 30)}
-              title="全体表示"
-            >
-              <Maximize2 size={14} />
-              Fit
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleZoomBy(0.8)}
+                title="縮小"
+                aria-label="縮小"
+              >
+                <ZoomOut size={14} />
+                －
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleZoomBy(1.25)}
+                title="拡大"
+                aria-label="拡大"
+              >
+                <ZoomIn size={14} />
+                ＋
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => cyRef.current?.fit(undefined, 30)}
+                title="全体表示"
+              >
+                <Maximize2 size={14} />
+                Fit
+              </button>
+            </div>
           </div>
         </div>
 

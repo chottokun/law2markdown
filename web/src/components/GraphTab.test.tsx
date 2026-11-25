@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ArticleSummary, LawCatalogEntry } from '../lib/types';
 
@@ -8,6 +8,9 @@ const { cytoscapeMock, cyInstanceMock, fetchLawArticlesMock } = vi.hoisted(() =>
     one: vi.fn(),
     resize: vi.fn(),
     fit: vi.fn(),
+    zoom: vi.fn(() => 1),
+    width: vi.fn(() => 800),
+    height: vi.fn(() => 600),
     animate: vi.fn(),
     destroy: vi.fn(),
     elements: vi.fn(() => ({
@@ -67,6 +70,8 @@ describe('GraphTab', () => {
   beforeEach(() => {
     cytoscapeMock.mockClear();
     cyInstanceMock.resize.mockClear();
+    cyInstanceMock.animate.mockClear();
+    cyInstanceMock.zoom.mockReturnValue(1);
     fetchLawArticlesMock.mockReset();
   });
 
@@ -101,11 +106,31 @@ describe('GraphTab', () => {
     const firstCallArg = (cytoscapeMock.mock.calls as unknown[][])[0][0] as {
       container: HTMLElement | null;
       elements: unknown[];
+      wheelSensitivity: number;
+      minZoom: number;
+      maxZoom: number;
     };
     expect(firstCallArg.container).toBeInstanceOf(HTMLElement);
     expect(firstCallArg.elements.length).toBe(3);
+    expect(firstCallArg.wheelSensitivity).toBe(0.2);
+    expect(firstCallArg.minZoom).toBe(0.1);
+    expect(firstCallArg.maxZoom).toBe(4);
     expect(cyInstanceMock.resize).toHaveBeenCalled();
     expect(screen.getByText('条文ノード: 2')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '拡大' }));
+    expect(cyInstanceMock.animate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        zoom: expect.objectContaining({ level: 1.25 }),
+      }),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '縮小' }));
+    expect(cyInstanceMock.animate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        zoom: expect.objectContaining({ level: 0.8 }),
+      }),
+    );
   });
 
   it('displays an error overlay if fetching articles fails', async () => {
