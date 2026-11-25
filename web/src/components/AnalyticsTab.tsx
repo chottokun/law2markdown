@@ -1,4 +1,5 @@
 import {
+  BarController,
   BarElement,
   CategoryScale,
   Chart,
@@ -13,7 +14,7 @@ import { fetchAnalyticsSummary, runSandboxSql } from '../lib/queries';
 import { rowsToCsv } from '../lib/sqlSafety';
 import type { AnalyticsSummary, SqlQueryResult } from '../lib/types';
 
-Chart.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
+Chart.register(BarController, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 interface AnalyticsTabProps {
   onOpenLawInViewer: (lawId: string) => void;
