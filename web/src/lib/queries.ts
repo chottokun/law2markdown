@@ -1,4 +1,5 @@
 import { deduplicateLawCatalog, deduplicateLawRanking } from './analyticsHelpers';
+import { SUMMARY_JSON_URL } from './constants';
 import { getDuckDb } from './duckdb';
 import { extractEraFromLawNum } from './graphBuilder';
 import { stripHtmlTags } from './sanitize';
@@ -14,6 +15,52 @@ import type {
 
 let catalogCache: LawCatalogEntry[] | null = null;
 let analyticsCache: AnalyticsSummary | null = null;
+let summaryFetchPromise: Promise<boolean> | null = null;
+
+export function resetQueryCaches(): void {
+  catalogCache = null;
+  analyticsCache = null;
+  summaryFetchPromise = null;
+}
+
+async function tryLoadRemoteSummary(): Promise<boolean> {
+  if (catalogCache && analyticsCache) {
+    return true;
+  }
+  if (summaryFetchPromise) {
+    return summaryFetchPromise;
+  }
+
+  summaryFetchPromise = (async () => {
+    if (typeof fetch !== 'function') return false;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    try {
+      const res = await fetch(SUMMARY_JSON_URL, { signal: controller.signal });
+      if (!res.ok) return false;
+      const payload = (await res.json()) as {
+        catalog?: LawCatalogEntry[];
+        analytics?: AnalyticsSummary;
+      };
+      if (
+        !Array.isArray(payload?.catalog) ||
+        !payload?.analytics ||
+        typeof payload.analytics.totalArticles !== 'number'
+      ) {
+        return false;
+      }
+      catalogCache = payload.catalog;
+      analyticsCache = payload.analytics;
+      return true;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
+  })();
+
+  return summaryFetchPromise;
+}
 
 function toNumber(val: unknown): number {
   if (typeof val === 'number') return val;
@@ -63,6 +110,9 @@ function escapeLikePattern(term: string): string {
  */
 export async function fetchLawCatalog(): Promise<LawCatalogEntry[]> {
   if (catalogCache) {
+    return catalogCache;
+  }
+  if (await tryLoadRemoteSummary() && catalogCache) {
     return catalogCache;
   }
 
@@ -242,6 +292,9 @@ export async function searchArticles(
  */
 export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
   if (analyticsCache) {
+    return analyticsCache;
+  }
+  if (await tryLoadRemoteSummary() && analyticsCache) {
     return analyticsCache;
   }
 

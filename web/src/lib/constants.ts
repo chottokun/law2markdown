@@ -2,6 +2,7 @@ export const HF_DATASET_ID = 'Chottokun/japan-laws-md';
 export const HF_DATASET_URL = `https://huggingface.co/datasets/${HF_DATASET_ID}`;
 export const GITHUB_REPO_URL = 'https://github.com/chottokun/law2markdown';
 export const PARQUET_URL = `https://huggingface.co/datasets/${HF_DATASET_ID}/resolve/main/laws_articles.parquet`;
+export const SUMMARY_JSON_URL = `https://huggingface.co/datasets/${HF_DATASET_ID}/resolve/main/laws_summary.json`;
 export const PARQUET_VIRTUAL_NAME = 'laws_articles.parquet';
 
 export interface CoreLawEntry {
