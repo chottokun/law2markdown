@@ -1,4 +1,5 @@
 import { deduplicateLawCatalog, deduplicateLawRanking } from './analyticsHelpers';
+import { getBaseLawKey } from './analyticsHelpers';
 import { SUMMARY_JSON_URL } from './constants';
 import { getDuckDb } from './duckdb';
 import { extractEraFromLawNum } from './graphBuilder';
@@ -6,20 +7,25 @@ import { stripHtmlTags } from './sanitize';
 import { validateReadOnlySql } from './sqlSafety';
 import type {
   AnalyticsSummary,
+  ArticleContentRow,
   ArticleDetail,
   ArticleSummary,
   LawCatalogEntry,
+  PopularTermEntry,
   SearchResultEntry,
   SqlQueryResult,
+  TermDefinitionHit,
 } from './types';
 
 let catalogCache: LawCatalogEntry[] | null = null;
 let analyticsCache: AnalyticsSummary | null = null;
+let topTermsCache: PopularTermEntry[] | null = null;
 let summaryFetchPromise: Promise<boolean> | null = null;
 
 export function resetQueryCaches(): void {
   catalogCache = null;
   analyticsCache = null;
+  topTermsCache = null;
   summaryFetchPromise = null;
 }
 
@@ -404,4 +410,149 @@ export async function runSandboxSql(rawSql: string): Promise<SqlQueryResult> {
     elapsedMs,
     truncated,
   };
+}
+
+/**
+ * 指定法令の全条文と本文を取得する（新旧 Diff 比較用）。
+ */
+export async function fetchLawArticlesWithContent(lawId: string): Promise<ArticleContentRow[]> {
+  const { conn } = await getDuckDb();
+  const stmt = await conn.prepare(`
+    SELECT
+      article_num,
+      hierarchy_path,
+      title,
+      content
+    FROM laws_articles
+    WHERE law_id = ?
+      AND article_num IS NOT NULL
+      AND TRIM(article_num) <> ''
+  `);
+
+  try {
+    const table = await stmt.query(lawId);
+    const rows = table.toArray() as Record<string, unknown>[];
+    const items: ArticleContentRow[] = rows.map((row) => ({
+      article_num: String(row.article_num ?? ''),
+      hierarchy_path: String(row.hierarchy_path ?? ''),
+      title: String(row.title ?? ''),
+      content: String(row.content ?? ''),
+    }));
+    items.sort((a, b) => compareArticleNums(a.article_num, b.article_num));
+    return items;
+  } finally {
+    await stmt.close();
+  }
+}
+
+/**
+ * 多くの法令で共通して定義されている法定用語ランキングを取得する。
+ */
+export async function fetchTopDefinedTerms(limit = 30): Promise<PopularTermEntry[]> {
+  if (topTermsCache) {
+    return topTermsCache.slice(0, limit);
+  }
+
+  const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
+  const { conn } = await getDuckDb();
+  const stmt = await conn.prepare(`
+    SELECT
+      term,
+      COUNT(DISTINCT split_part(law_id, '_', 1)) AS law_count,
+      COUNT(*) AS occurrence_count
+    FROM (
+      SELECT law_id, UNNEST(defined_terms) AS term
+      FROM laws_articles
+      WHERE LEN(defined_terms) > 0
+    )
+    WHERE TRIM(term) <> ''
+    GROUP BY term
+    ORDER BY law_count DESC, occurrence_count DESC
+    LIMIT CAST(? AS INTEGER)
+  `);
+
+  try {
+    const table = await stmt.query(safeLimit);
+    const rows = table.toArray() as Record<string, unknown>[];
+    topTermsCache = rows.map((row) => ({
+      term: String(row.term ?? ''),
+      law_count: toNumber(row.law_count),
+      occurrence_count: toNumber(row.occurrence_count),
+    }));
+    return topTermsCache;
+  } finally {
+    await stmt.close();
+  }
+}
+
+/**
+ * 指定用語（部分一致）を定義している条文を全法令から横断検索し、改正版重複を除外して返す。
+ */
+export async function searchDefinedTerms(
+  termQuery: string,
+  limit = 60,
+): Promise<TermDefinitionHit[]> {
+  const trimmed = termQuery.trim();
+  if (!trimmed) return [];
+
+  const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
+  const fetchLimit = safeLimit * 3;
+  const pattern = `%${escapeLikePattern(trimmed)}%`;
+  const lowerQuery = trimmed.toLowerCase();
+
+  const { conn } = await getDuckDb();
+  const stmt = await conn.prepare(`
+    SELECT
+      law_id,
+      law_num,
+      law_title,
+      article_num,
+      hierarchy_path,
+      title,
+      defined_terms,
+      SUBSTR(content, 1, 500) AS snippet
+    FROM laws_articles
+    WHERE LEN(defined_terms) > 0
+      AND array_to_string(defined_terms, ' || ') ILIKE ? ESCAPE '\\'
+      AND article_num IS NOT NULL
+      AND TRIM(article_num) <> ''
+    LIMIT CAST(? AS INTEGER)
+  `);
+
+  try {
+    const table = await stmt.query(pattern, fetchLimit);
+    const rows = table.toArray() as Record<string, unknown>[];
+    const seen = new Set<string>();
+    const results: TermDefinitionHit[] = [];
+
+    for (const row of rows) {
+      const terms = toStringArray(row.defined_terms);
+      const matchedTerms = terms.filter((t) => t.toLowerCase().includes(lowerQuery));
+      if (matchedTerms.length === 0) continue;
+
+      const lawId = String(row.law_id ?? '');
+      const lawNum = String(row.law_num ?? '');
+      const lawTitle = String(row.law_title ?? '');
+      const articleNum = String(row.article_num ?? '');
+      const dedupeKey = `${getBaseLawKey(lawId, lawNum, lawTitle)}::${articleNum}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+
+      results.push({
+        law_id: lawId,
+        law_num: lawNum,
+        law_title: lawTitle,
+        article_num: articleNum,
+        hierarchy_path: String(row.hierarchy_path ?? ''),
+        title: String(row.title ?? ''),
+        matched_terms: matchedTerms,
+        snippet: stripHtmlTags(String(row.snippet ?? '')).replace(/\s+/g, ' ').slice(0, 240),
+      });
+      if (results.length >= safeLimit) break;
+    }
+
+    return results;
+  } finally {
+    await stmt.close();
+  }
 }
