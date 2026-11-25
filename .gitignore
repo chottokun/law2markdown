@@ -81,3 +81,6 @@ output_sample.zip
 # Web frontend
 web/node_modules/
 web/dist/
+web/.vite/
+web/coverage/
+web/*.tsbuildinfo
