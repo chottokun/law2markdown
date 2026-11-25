@@ -115,6 +115,44 @@ describe('buildLawGraphElements', () => {
 
     const result = buildLawGraphElements(articles);
     expect(result.nodes.map((n) => n.data.id)).toEqual(['1']);
+    expect(result.stats.totalNodeCount).toBe(1);
     expect(result.edges).toHaveLength(0);
+  });
+
+  it('filters isolated nodes when hideIsolated is true while keeping totalNodeCount', () => {
+    const articles: ArticleSummary[] = [
+      {
+        law_id: 'LAW1',
+        article_num: '1',
+        hierarchy_path: 'テスト法 > 第一条',
+        title: 'テスト法 第一条',
+        outbound_references: ['art_002_第二条'],
+        inbound_references: [],
+        defined_terms: [],
+      },
+      {
+        law_id: 'LAW1',
+        article_num: '2',
+        hierarchy_path: 'テスト法 > 第二条',
+        title: 'テスト法 第二条',
+        outbound_references: [],
+        inbound_references: ['art_001_第一条'],
+        defined_terms: [],
+      },
+      {
+        law_id: 'LAW1',
+        article_num: '3',
+        hierarchy_path: 'テスト法 > 第三条',
+        title: 'テスト法 第三条',
+        outbound_references: [],
+        inbound_references: [],
+        defined_terms: [],
+      },
+    ];
+
+    const filtered = buildLawGraphElements(articles, { hideIsolated: true });
+    expect(filtered.nodes.map((n) => n.data.id)).toEqual(['1', '2']);
+    expect(filtered.stats.nodeCount).toBe(2);
+    expect(filtered.stats.totalNodeCount).toBe(3);
   });
 });

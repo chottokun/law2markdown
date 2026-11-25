@@ -30,6 +30,7 @@ export function GraphTab({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [layoutKind, setLayoutKind] = useState<LayoutKind>('cose');
+  const [hideIsolated, setHideIsolated] = useState(false);
   const [nodeSearch, setNodeSearch] = useState('');
   const [focusedArticleNum, setFocusedArticleNum] = useState<string | null>(selectedArticleNum);
 
@@ -50,6 +51,8 @@ export function GraphTab({
     fetchLawArticles(selectedLawId)
       .then((list) => {
         if (!cancelled) {
+          const initial = buildLawGraphElements(list);
+          setHideIsolated(initial.stats.totalNodeCount > 180 && initial.stats.edgeCount > 0);
           setArticles(list);
           setLoading(false);
         }
@@ -66,7 +69,10 @@ export function GraphTab({
     };
   }, [selectedLawId]);
 
-  const graph = useMemo(() => buildLawGraphElements(articles), [articles]);
+  const graph = useMemo(
+    () => buildLawGraphElements(articles, { hideIsolated }),
+    [articles, hideIsolated],
+  );
 
   const selectorLaws = useMemo(() => {
     const top = catalog.slice(0, 150);
@@ -105,12 +111,16 @@ export function GraphTab({
     }
 
     const animate = graph.nodes.length <= 220;
+    const isDenseGraph = graph.edges.length > 250;
     const cy = cytoscape({
       container,
       elements: [...graph.nodes, ...graph.edges],
       wheelSensitivity: 0.2,
       minZoom: 0.1,
       maxZoom: 4,
+      textureOnViewport: true,
+      hideEdgesOnViewport: graph.edges.length > 300,
+      motionBlur: false,
       style: [
         {
           selector: 'node',
@@ -119,6 +129,7 @@ export function GraphTab({
             height: 'data(size)',
             label: 'data(label)',
             'font-size': 10,
+            'min-zoomed-font-size': 8,
             color: '#e2e8f0',
             'text-valign': 'bottom',
             'text-margin-y': 5,
@@ -133,8 +144,8 @@ export function GraphTab({
             width: 1.3,
             'line-color': '#334155',
             'target-arrow-color': '#475569',
-            'target-arrow-shape': 'triangle',
-            'curve-style': 'bezier',
+            'target-arrow-shape': isDenseGraph ? 'none' : 'triangle',
+            'curve-style': isDenseGraph ? 'haystack' : 'bezier',
             opacity: 0.65,
           },
         },
@@ -196,6 +207,7 @@ export function GraphTab({
             : {
                 name: 'cose',
                 animate,
+                numIter: graph.nodes.length > 250 ? 250 : 600,
                 nodeRepulsion: () => 4500,
                 idealEdgeLength: () => 90,
                 padding: 24,
@@ -334,6 +346,15 @@ export function GraphTab({
               <option value="breadthfirst">階層ツリー</option>
             </select>
 
+            <button
+              type="button"
+              className={`chip ${hideIsolated ? 'active' : ''}`}
+              onClick={() => setHideIsolated((prev) => !prev)}
+              title="他の条文との参照関係がない孤立ノードを非表示にして描画を高速化します"
+            >
+              参照ありのみ
+            </button>
+
             <form onSubmit={handleFocusNodeByQuery} style={{ display: 'flex', gap: '0.35rem' }}>
               <div className="input-box">
                 <Search size={14} color="#94a3b8" />
@@ -404,7 +425,12 @@ export function GraphTab({
         <div>
           <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>法令グラフ統計</h3>
           <div className="chip-row">
-            <span className="chip">条文ノード: {graph.stats.nodeCount}</span>
+            <span className="chip">
+              条文ノード: {graph.stats.nodeCount}
+              {graph.stats.nodeCount < graph.stats.totalNodeCount
+                ? ` / ${graph.stats.totalNodeCount}`
+                : ''}
+            </span>
             <span className="chip active">参照エッジ: {graph.stats.edgeCount}</span>
           </div>
           {graph.stats.topHub && (

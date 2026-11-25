@@ -109,12 +109,16 @@ describe('GraphTab', () => {
       wheelSensitivity: number;
       minZoom: number;
       maxZoom: number;
+      textureOnViewport: boolean;
+      motionBlur: boolean;
     };
     expect(firstCallArg.container).toBeInstanceOf(HTMLElement);
     expect(firstCallArg.elements.length).toBe(3);
     expect(firstCallArg.wheelSensitivity).toBe(0.2);
     expect(firstCallArg.minZoom).toBe(0.1);
     expect(firstCallArg.maxZoom).toBe(4);
+    expect(firstCallArg.textureOnViewport).toBe(true);
+    expect(firstCallArg.motionBlur).toBe(false);
     expect(cyInstanceMock.resize).toHaveBeenCalled();
     expect(screen.getByText('条文ノード: 2')).toBeInTheDocument();
 

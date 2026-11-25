@@ -21,11 +21,16 @@ export interface GraphEdgeElement {
   };
 }
 
+export interface LawGraphOptions {
+  hideIsolated?: boolean;
+}
+
 export interface LawGraphResult {
   nodes: GraphNodeElement[];
   edges: GraphEdgeElement[];
   stats: {
     nodeCount: number;
+    totalNodeCount: number;
     edgeCount: number;
     topHub: { article_num: string; title: string; inDegree: number } | null;
   };
@@ -67,7 +72,10 @@ function formatShortArticleLabel(articleNum: string): string {
 /**
  * 法令内の条文サマリ一覧から Cytoscape.js 用のグラフノード・エッジ要素を構築する。
  */
-export function buildLawGraphElements(articles: ArticleSummary[]): LawGraphResult {
+export function buildLawGraphElements(
+  articles: ArticleSummary[],
+  options: LawGraphOptions = {},
+): LawGraphResult {
   const uniqueArticles: ArticleSummary[] = [];
   const seenIds = new Set<string>();
   for (const art of articles) {
@@ -109,9 +117,20 @@ export function buildLawGraphElements(articles: ArticleSummary[]): LawGraphResul
     }
   }
 
+  const totalNodeCount = uniqueArticles.length;
+  const connectedIds = new Set<string>();
+  for (const edge of edges) {
+    connectedIds.add(edge.data.source);
+    connectedIds.add(edge.data.target);
+  }
+  const shouldHideIsolated = Boolean(options.hideIsolated) && connectedIds.size > 0;
+
   let topHub: { article_num: string; title: string; inDegree: number } | null = null;
   const nodes: GraphNodeElement[] = [];
   for (const art of uniqueArticles) {
+    if (shouldHideIsolated && !connectedIds.has(art.article_num)) {
+      continue;
+    }
     const inDeg = Math.max(inCount.get(art.article_num) ?? 0, art.inbound_references.length);
     const outDeg = outCount.get(art.article_num) ?? 0;
     const size = Math.min(58, 22 + Math.round(Math.sqrt(inDeg) * 7));
@@ -143,6 +162,7 @@ export function buildLawGraphElements(articles: ArticleSummary[]): LawGraphResul
     edges,
     stats: {
       nodeCount: nodes.length,
+      totalNodeCount,
       edgeCount: edges.length,
       topHub,
     },
