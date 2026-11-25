@@ -104,6 +104,8 @@ export async function fetchLawArticles(lawId: string): Promise<ArticleSummary[]>
       defined_terms
     FROM laws_articles
     WHERE law_id = ?
+      AND article_num IS NOT NULL
+      AND TRIM(article_num) <> ''
   `);
 
   try {

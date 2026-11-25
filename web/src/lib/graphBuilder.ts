@@ -68,18 +68,27 @@ function formatShortArticleLabel(articleNum: string): string {
  * 法令内の条文サマリ一覧から Cytoscape.js 用のグラフノード・エッジ要素を構築する。
  */
 export function buildLawGraphElements(articles: ArticleSummary[]): LawGraphResult {
-  const knownIds = new Set(articles.map((a) => a.article_num));
+  const uniqueArticles: ArticleSummary[] = [];
+  const seenIds = new Set<string>();
+  for (const art of articles) {
+    const id = art.article_num.trim();
+    if (!id || seenIds.has(id)) continue;
+    seenIds.add(id);
+    uniqueArticles.push(id === art.article_num ? art : { ...art, article_num: id });
+  }
+
+  const knownIds = seenIds;
   const edgeSet = new Set<string>();
   const edges: GraphEdgeElement[] = [];
   const inCount = new Map<string, number>();
   const outCount = new Map<string, number>();
 
-  for (const art of articles) {
+  for (const art of uniqueArticles) {
     inCount.set(art.article_num, 0);
     outCount.set(art.article_num, 0);
   }
 
-  for (const art of articles) {
+  for (const art of uniqueArticles) {
     for (const ref of art.outbound_references) {
       const targetNum = parseRefArticleKey(ref);
       if (!targetNum || targetNum === art.article_num || !knownIds.has(targetNum)) {
@@ -102,7 +111,7 @@ export function buildLawGraphElements(articles: ArticleSummary[]): LawGraphResul
 
   let topHub: { article_num: string; title: string; inDegree: number } | null = null;
   const nodes: GraphNodeElement[] = [];
-  for (const art of articles) {
+  for (const art of uniqueArticles) {
     const inDeg = Math.max(inCount.get(art.article_num) ?? 0, art.inbound_references.length);
     const outDeg = outCount.get(art.article_num) ?? 0;
     const size = Math.min(58, 22 + Math.round(Math.sqrt(inDeg) * 7));

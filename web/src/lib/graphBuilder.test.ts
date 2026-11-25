@@ -72,4 +72,49 @@ describe('buildLawGraphElements', () => {
     expect(node2?.data.inDegree).toBe(2);
     expect(node2?.data.size).toBeGreaterThan(22);
   });
+
+  it('skips empty, whitespace, and duplicate article_num entries safely', () => {
+    const articles: ArticleSummary[] = [
+      {
+        law_id: 'LAW1',
+        article_num: '',
+        hierarchy_path: 'テスト法 > 目次',
+        title: 'テスト法 条文一覧',
+        outbound_references: [],
+        inbound_references: [],
+        defined_terms: [],
+      },
+      {
+        law_id: 'LAW1',
+        article_num: '   ',
+        hierarchy_path: 'テスト法 > 空白',
+        title: '空白',
+        outbound_references: [],
+        inbound_references: [],
+        defined_terms: [],
+      },
+      {
+        law_id: 'LAW1',
+        article_num: '1',
+        hierarchy_path: 'テスト法 > 第一条',
+        title: 'テスト法 第一条',
+        outbound_references: [],
+        inbound_references: [],
+        defined_terms: [],
+      },
+      {
+        law_id: 'LAW1',
+        article_num: '1',
+        hierarchy_path: 'テスト法 > 第一条（重複）',
+        title: 'テスト法 第一条（重複）',
+        outbound_references: [],
+        inbound_references: [],
+        defined_terms: [],
+      },
+    ];
+
+    const result = buildLawGraphElements(articles);
+    expect(result.nodes.map((n) => n.data.id)).toEqual(['1']);
+    expect(result.edges).toHaveLength(0);
+  });
 });
