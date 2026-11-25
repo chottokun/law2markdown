@@ -116,8 +116,14 @@ def collect_article_records(kb_dir: Path) -> list[LawArticleRecord]:
     records: list[LawArticleRecord] = []
 
     for article_file in kb_dir.glob("**/articles/*.md"):
+        if article_file.name == "index.md":
+            continue
         text = article_file.read_text(encoding="utf-8")
         meta, body = parse_frontmatter(text)
+
+        article_num = str(meta.get("article_num", "")).strip()
+        if not article_num:
+            continue
 
         child_anchors = meta.get("child_anchors", [])
         child_anchors_json = (
@@ -129,7 +135,7 @@ def collect_article_records(kb_dir: Path) -> list[LawArticleRecord]:
                 law_id=str(meta.get("law_id", "")),
                 law_num=str(meta.get("law_num", "")),
                 law_title=str(meta.get("title", "")).split(" ")[0],
-                article_num=str(meta.get("article_num", "")),
+                article_num=article_num,
                 hierarchy_path=str(meta.get("hierarchy_path", "")),
                 title=str(meta.get("title", "")),
                 content=body,
@@ -184,6 +190,115 @@ def export_articles_parquet(records: list[LawArticleRecord], output_parquet_path
     output_parquet_path.parent.mkdir(parents=True, exist_ok=True)
     pq.write_table(table, output_parquet_path, compression="zstd")
     return output_parquet_path
+
+
+def _extract_era(law_num: str) -> str:
+    for era in ("令和", "平成", "昭和", "大正", "明治"):
+        if law_num.startswith(era):
+            return era
+    return "その他"
+
+
+def export_summary_json(records: list[LawArticleRecord], output_json_path: Path) -> Path:
+    """Web ビューワーおよびアナリティクス初期表示用の軽量事前集計 JSON を出力する."""
+    by_law_id: dict[str, dict[str, Any]] = {}
+    total_outbound_edges = 0
+    total_defined_terms = 0
+
+    for rec in records:
+        total_outbound_edges += len(rec.outbound_references)
+        total_defined_terms += len(rec.defined_terms)
+        entry = by_law_id.get(rec.law_id)
+        if entry is None:
+            by_law_id[rec.law_id] = {
+                "law_id": rec.law_id,
+                "law_num": rec.law_num,
+                "law_title": rec.law_title,
+                "article_count": 1,
+                "term_count": len(rec.defined_terms),
+            }
+        else:
+            entry["article_count"] += 1
+            entry["term_count"] += len(rec.defined_terms)
+
+    catalog = sorted(
+        (
+            {
+                "law_id": v["law_id"],
+                "law_num": v["law_num"],
+                "law_title": v["law_title"],
+                "article_count": v["article_count"],
+            }
+            for v in by_law_id.values()
+        ),
+        key=lambda x: (-x["article_count"], x["law_title"]),
+    )
+
+    unique_by_base: dict[str, dict[str, Any]] = {}
+    for v in by_law_id.values():
+        base_key = v["law_id"].split("_")[0].strip() or v["law_num"] or v["law_title"]
+        existing = unique_by_base.get(base_key)
+        if existing is None or v["law_id"] < existing["law_id"]:
+            unique_by_base[base_key] = v
+
+    unique_laws = sorted(
+        unique_by_base.values(),
+        key=lambda x: (-x["article_count"], x["law_title"]),
+    )
+
+    era_order = ["明治", "大正", "昭和", "平成", "令和", "その他"]
+    era_counts = {era: 0 for era in era_order}
+    for law in unique_laws:
+        era_counts[_extract_era(law["law_num"])] += 1
+
+    top_laws_by_articles = [
+        {
+            "law_id": item["law_id"],
+            "law_title": item["law_title"],
+            "law_num": item["law_num"],
+            "count": item["article_count"],
+        }
+        for item in unique_laws[:15]
+    ]
+
+    top_terms_sorted = sorted(
+        (v for v in by_law_id.values() if v["term_count"] > 0),
+        key=lambda x: (-x["term_count"], x["law_id"]),
+    )
+    seen_term_bases: set[str] = set()
+    top_laws_by_terms: list[dict[str, Any]] = []
+    for item in top_terms_sorted:
+        base_key = item["law_id"].split("_")[0].strip() or item["law_title"]
+        if base_key in seen_term_bases:
+            continue
+        seen_term_bases.add(base_key)
+        top_laws_by_terms.append(
+            {
+                "law_id": item["law_id"],
+                "law_title": item["law_title"],
+                "count": item["term_count"],
+            }
+        )
+        if len(top_laws_by_terms) >= 10:
+            break
+
+    payload = {
+        "catalog": catalog,
+        "analytics": {
+            "totalArticles": len(records),
+            "totalLaws": len(unique_laws),
+            "totalLawVersions": len(catalog),
+            "totalOutboundEdges": total_outbound_edges,
+            "totalDefinedTerms": total_defined_terms,
+            "eraDistribution": [{"era": era, "count": era_counts[era]} for era in era_order],
+            "topLawsByArticles": top_laws_by_articles,
+            "topLawsByTerms": top_laws_by_terms,
+        },
+    }
+
+    output_json_path.parent.mkdir(parents=True, exist_ok=True)
+    output_json_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    return output_json_path
 
 
 def create_markdown_tar_zst(source_dir: Path, output_archive_path: Path) -> Path:

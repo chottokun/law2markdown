@@ -180,6 +180,7 @@ def main() -> int:
                 create_markdown_tar_zst,
                 download_law_xml,
                 export_articles_parquet,
+                export_summary_json,
                 generate_dataset_card,
                 upload_to_huggingface,
             )
@@ -219,7 +220,11 @@ def main() -> int:
                 print("📊 条文レコードの集約と Parquet 出力中...")
                 records = collect_article_records(kb_path)
                 parquet_path = export_articles_parquet(records, Path(args.parquet_out))
+                summary_path = export_summary_json(
+                    records, parquet_path.with_name("laws_summary.json")
+                )
                 print(f"✅ Parquet 作成完了: {parquet_path} ({len(records)} 条文)")
+                print(f"✅ サマリ JSON 作成完了: {summary_path}")
 
                 print("🗜️ Markdown アーカイブの圧縮中...")
                 archive_path = create_markdown_tar_zst(kb_path, Path(args.archive_out))
@@ -238,6 +243,7 @@ def main() -> int:
                     files_to_upload = {
                         archive_path.name: archive_path,
                         parquet_path.name: parquet_path,
+                        summary_path.name: summary_path,
                     }
                     upload_to_huggingface(
                         repo_id=args.repo_id,
